@@ -1,0 +1,19 @@
+# https://docs.travis-ci.com/user/languages/go/
+dist: bionic
+language: go
+go_import_path: github.com/jeremyje/filetools
+
+env:
+  global:
+  - GO111MODULE="on"
+
+go:
+  - 1.12
+
+os:
+  - linux
+  - osx
+
+script:
+  - make all
+  - make check
