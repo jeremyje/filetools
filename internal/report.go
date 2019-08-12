@@ -26,6 +26,7 @@ const duplicateFileReportTemplate = `<!DOCTYPE html>
 			font-size: 12px;
 		}
 		table {
+			table-layout: fixed;
 		}
 		.odd {
 			background: #DDDDDD;
@@ -43,11 +44,13 @@ const duplicateFileReportTemplate = `<!DOCTYPE html>
 	</body>
 </html>`
 
+// FileTable is a table of files
 type FileTable struct {
 	Title    string
 	FileItem []FileItem
 }
 
+// FileItem is a descriptor for a file.
 type FileItem struct {
 	Name  string
 	Size  int64
@@ -63,7 +66,10 @@ func openFileForWrite(filename string, overwrite bool) (*os.File, error) {
 }
 
 func writeReport(w io.Writer, templateText string, arg interface{}) error {
-	t, err := template.New("report").Parse(templateText)
+	t, err := template.New("report").Funcs(template.FuncMap{
+		"sizeString": sizeString,
+		"oddEven":    newEvenOdd().next,
+	}).Parse(templateText)
 	if err != nil {
 		return errors.Wrap(err, "cannot parse HTML template")
 	}

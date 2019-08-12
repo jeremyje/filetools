@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"fmt"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -15,11 +17,102 @@ func TestNormalize(t *testing.T) {
 		{"/Video/1-ok.mp4", "1", []string{"-ok"}},
 		{"/Video/1 0 1.mp4", "101", []string{""}},
 		{"/Video/101.mp4", "101", []string{}},
+		{"../testdata/similar/close/house.txt", "ouse", []string{"h", "m"}},
+		{"../testdata/similar/close/mouse.pdf", "ouse", []string{"h", "m"}},
 	}
 	for _, tt := range tc {
 		p := normalize(tt.in, tt.clearToken)
 		if p != tt.out {
 			t.Errorf("normalize(%s) > %s, expected %s", tt.in, p, tt.out)
 		}
+	}
+}
+
+func TestFindSimilarFiles(t *testing.T) {
+	var testCases = []struct {
+		name    string
+		params  *SimilarParams
+		matches map[string][]string
+	}{
+		{
+			"Nothing", &SimilarParams{
+				Paths:       []string{},
+				ClearTokens: []string{},
+			},
+			map[string][]string{},
+		},
+		{
+			"Empty Path", &SimilarParams{
+				Paths:       []string{""},
+				ClearTokens: []string{},
+			},
+			map[string][]string{},
+		},
+		{
+			"A, B Match", &SimilarParams{
+				Paths:       []string{"../testdata/similar/by_extension"},
+				ClearTokens: []string{""},
+			},
+			map[string][]string{
+				"a": []string{"../testdata/similar/by_extension/a.1", "../testdata/similar/by_extension/a.2"},
+				"b": []string{"../testdata/similar/by_extension/b.1", "../testdata/similar/by_extension/b.2"},
+			},
+		},
+		{
+			"A, B Match (all directories)", &SimilarParams{
+				Paths:       []string{"../testdata/similar"},
+				ClearTokens: []string{""},
+			},
+			map[string][]string{
+				"a": []string{"../testdata/similar/by_extension/a.1", "../testdata/similar/by_extension/a.2"},
+				"b": []string{"../testdata/similar/by_extension/b.1", "../testdata/similar/by_extension/b.2"},
+			},
+		},
+		{
+			"Similar Files no match wrong tokens", &SimilarParams{
+				Paths:       []string{"../testdata/similar/close"},
+				ClearTokens: []string{"txt", "pdf"},
+			},
+			map[string][]string{},
+		},
+		{
+			"Similar Files Match by tokens", &SimilarParams{
+				Paths:       []string{"../testdata/similar/close"},
+				ClearTokens: []string{"m", "h"},
+			},
+			map[string][]string{
+				"ouse": []string{"../testdata/similar/close/house.txt", "../testdata/similar/close/mouse.pdf"},
+			},
+		},
+		{
+			"Similar Match (all directories)", &SimilarParams{
+				Paths:       []string{"../testdata/similar"},
+				ClearTokens: []string{"m", "h"},
+			},
+			map[string][]string{
+				"a":    []string{"../testdata/similar/by_extension/a.1", "../testdata/similar/by_extension/a.2"},
+				"b":    []string{"../testdata/similar/by_extension/b.1", "../testdata/similar/by_extension/b.2"},
+				"ouse": []string{"../testdata/similar/close/house.txt", "../testdata/similar/close/mouse.pdf"},
+			},
+		},
+		{
+			"Tokens Don't Match Anything", &SimilarParams{
+				Paths:       []string{"../testdata/similar/notsimilar"},
+				ClearTokens: []string{"$", "#", "one"},
+			},
+			map[string][]string{},
+		},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(fmt.Sprintf("%s findSimilarFiles(%+v)", tc.name, tc.params), func(t *testing.T) {
+			assert := assert.New(t)
+			similarMap := findSimilarFiles(tc.params)
+			if len(tc.matches) == 0 {
+				assert.Empty(similarMap)
+			} else {
+				assert.Equal(tc.matches, similarMap)
+			}
+		})
 	}
 }

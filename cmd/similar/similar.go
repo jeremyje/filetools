@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	pathFlag       = flag.String("path", "", "Path of directory tree to scan for duplicates.")
+	pathFlag       = flag.String("path", "", "Comma separated list of directory paths to scan for similar files.")
 	clearTokenFlag = flag.String("clear", "", "Clear tokens")
 )
 
@@ -17,7 +17,7 @@ func main() {
 
 func fromFlags() *internal.SimilarParams {
 	return &internal.SimilarParams{
-		Path:        *pathFlag,
+		Paths:       internal.StringList(pathFlag),
 		ClearTokens: internal.StringList(clearTokenFlag),
 	}
 }

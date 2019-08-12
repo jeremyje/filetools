@@ -9,15 +9,19 @@ import (
 	"strings"
 )
 
-var ALPHA_NUMBERIC *regexp.Regexp = regexp.MustCompile("[^a-zA-Z0-9]+")
+var (
+	alphaNumericRegex *regexp.Regexp = regexp.MustCompile("[^a-zA-Z0-9]+")
+)
 
+// SimilarParams are the parameters for finding similarly named files.
 type SimilarParams struct {
-	Path        string
+	Paths       []string
 	ClearTokens []string
 }
 
+// Similar finds similarly named files in a directory structure.
 func Similar(p *SimilarParams) {
-	matches := scanDir(p)
+	matches := findSimilarFiles(p)
 	report(matches)
 }
 
@@ -31,10 +35,10 @@ func report(matches map[string][]string) {
 	}
 }
 
-func scanDir(p *SimilarParams) map[string][]string {
+func findSimilarFiles(p *SimilarParams) map[string][]string {
 	clearTokens := p.ClearTokens
 	fileTable := make(map[string][]string)
-	filepath.Walk(p.Path, func(path string, info os.FileInfo, err error) error {
+	err := multiwalk(p.Paths, func(path string, info os.FileInfo, err error) error {
 		if err == nil {
 			normName := normalize(path, clearTokens)
 			arr, ok := fileTable[normName]
@@ -48,6 +52,10 @@ func scanDir(p *SimilarParams) map[string][]string {
 		}
 		return nil
 	})
+	if err != nil {
+		fmt.Printf("%s", err)
+		return map[string][]string{}
+	}
 
 	// Sanitize
 
@@ -66,6 +74,6 @@ func normalize(path string, clearTokens []string) string {
 	for _, v := range clearTokens {
 		p = strings.Replace(p, v, "", -1)
 	}
-	p = ALPHA_NUMBERIC.ReplaceAllString(p, "")
+	p = alphaNumericRegex.ReplaceAllString(p, "")
 	return p
 }

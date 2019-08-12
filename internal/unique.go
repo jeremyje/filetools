@@ -8,6 +8,7 @@ import (
 	"sync"
 )
 
+// UniqueParams is the parameters for finding duplicate files in a directory structure.
 type UniqueParams struct {
 	Paths        []string
 	MinSize      int64
@@ -47,11 +48,13 @@ func (fd *fileData) getHash() (string, error) {
 	return fileHash, err
 }
 
+// FilesWithSameHash holds a list of files with the same hash code.
 type FilesWithSameHash struct {
 	Names []string
 	Size  int64
 }
 
+// DuplicateFileReport is a report of all the duplicate files.
 type DuplicateFileReport struct {
 	Title      string
 	Duplicates map[string]*FilesWithSameHash
@@ -221,6 +224,7 @@ func (uc *uniqueContext) findDuplicates() *DuplicateFileReport {
 	return nil
 }
 
+// Unique finds all the duplicate files in a directory structure based on the UniqueParams
 func Unique(p *UniqueParams) error {
 	_, err := uniqueScan(p)
 	if err != nil {

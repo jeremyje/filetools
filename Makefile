@@ -24,7 +24,7 @@ vet:
 lint: fmt vet
 
 test:
-	$(GO) test ./... -race -cover
+	$(GO) test ./... -race -cover -timeout=10s
 
 bench:
 	$(GO) test ./... -bench=.
