@@ -1,6 +1,6 @@
 module github.com/jeremyje/filetools
 
-go 1.12
+go 1.11
 
 require (
 	github.com/dustin/go-humanize v1.0.0
