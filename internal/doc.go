@@ -12,16 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
-
-import (
-	"github.com/stretchr/testify/assert"
-	"testing"
-)
-
-func TestFromFlags(t *testing.T) {
-	assert := assert.New(t)
-	p := fromFlags()
-	assert.Empty(p.Paths)
-	assert.Empty(p.ClearTokens)
-}
+// Package internal contains all the internal implementations of File Tools.
+package internal
