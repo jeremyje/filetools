@@ -68,8 +68,8 @@ func TestFindSimilarFiles(t *testing.T) {
 				ClearTokens: []string{""},
 			},
 			map[string][]string{
-				"a": []string{"../testdata/similar/by_extension/a.1", "../testdata/similar/by_extension/a.2"},
-				"b": []string{"../testdata/similar/by_extension/b.1", "../testdata/similar/by_extension/b.2"},
+				"a": {"../testdata/similar/by_extension/a.1", "../testdata/similar/by_extension/a.2"},
+				"b": {"../testdata/similar/by_extension/b.1", "../testdata/similar/by_extension/b.2"},
 			},
 		},
 		{
@@ -78,8 +78,8 @@ func TestFindSimilarFiles(t *testing.T) {
 				ClearTokens: []string{""},
 			},
 			map[string][]string{
-				"a": []string{"../testdata/similar/by_extension/a.1", "../testdata/similar/by_extension/a.2"},
-				"b": []string{"../testdata/similar/by_extension/b.1", "../testdata/similar/by_extension/b.2"},
+				"a": {"../testdata/similar/by_extension/a.1", "../testdata/similar/by_extension/a.2"},
+				"b": {"../testdata/similar/by_extension/b.1", "../testdata/similar/by_extension/b.2"},
 			},
 		},
 		{
@@ -95,7 +95,7 @@ func TestFindSimilarFiles(t *testing.T) {
 				ClearTokens: []string{"m", "h"},
 			},
 			map[string][]string{
-				"ouse": []string{"../testdata/similar/close/house.txt", "../testdata/similar/close/mouse.pdf"},
+				"ouse": {"../testdata/similar/close/house.txt", "../testdata/similar/close/mouse.pdf"},
 			},
 		},
 		{
@@ -104,9 +104,9 @@ func TestFindSimilarFiles(t *testing.T) {
 				ClearTokens: []string{"m", "h"},
 			},
 			map[string][]string{
-				"a":    []string{"../testdata/similar/by_extension/a.1", "../testdata/similar/by_extension/a.2"},
-				"b":    []string{"../testdata/similar/by_extension/b.1", "../testdata/similar/by_extension/b.2"},
-				"ouse": []string{"../testdata/similar/close/house.txt", "../testdata/similar/close/mouse.pdf"},
+				"a":    {"../testdata/similar/by_extension/a.1", "../testdata/similar/by_extension/a.2"},
+				"b":    {"../testdata/similar/by_extension/b.1", "../testdata/similar/by_extension/b.2"},
+				"ouse": {"../testdata/similar/close/house.txt", "../testdata/similar/close/mouse.pdf"},
 			},
 		},
 		{

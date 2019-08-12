@@ -30,7 +30,8 @@ cmd/unique/unique$(DOT_EXE):
 	$(GO_BUILD) -o cmd/unique/unique$(DOT_EXE) cmd/unique/unique.go
 
 fmt:
-	go fmt ./...
+	gofmt -s -w .
+	$(GO) fmt ./...
 
 vet:
 	$(GO) vet ./...
@@ -49,4 +50,6 @@ clean:
 	rm -f cmd/similar/similar$(DOT_EXE)
 	rm -f cmd/unique$/unique$(DOT_EXE)
 
-.PHONY: all fmt vet lint test bench check clean
+presubmit: clean check all
+
+.PHONY: all fmt vet lint test bench check clean presubmit
