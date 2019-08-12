@@ -48,7 +48,7 @@ check: lint test bench
 
 clean:
 	rm -f cmd/similar/similar$(DOT_EXE)
-	rm -f cmd/unique$/unique$(DOT_EXE)
+	rm -f cmd/unique/unique$(DOT_EXE)
 
 presubmit: clean check all
 
