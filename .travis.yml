@@ -27,6 +27,7 @@ matrix:
 env:
   global:
   - GO111MODULE="on"
+  - CODECOV_TOKEN="3d7b9b4a-9538-46c6-a863-af870efc72dc"
 
 os:
   - linux

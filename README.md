@@ -5,6 +5,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/jeremyje/filetools/blob/master/LICENSE)
 [![GitHub release](https://img.shields.io/github/release-pre/jeremyje/filetools.svg)](https://github.com/jeremyje/filetools/releases)
 [![Build Status](https://travis-ci.org/jeremyje/filetools.svg?branch=master)](https://travis-ci.org/jeremyje/filetools)
+[![codecov](https://codecov.io/gh/jeremyje/filetools/branch/master/graph/badge.svg)](https://codecov.io/gh/jeremyje/filetools)
 
 A collection of tools to manage a large collection of files.
 
