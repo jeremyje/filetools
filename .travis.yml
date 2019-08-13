@@ -21,8 +21,8 @@ matrix:
   include:
   - os: windows
     before_install:
-    - choco install cygwin
-    - C:\\tools\\cygwin\\cygwinsetup.exe -q -P make,unzip,zip
+    - choco install make
+    #- C:\\tools\\cygwin\\cygwinsetup.exe -q -P make,unzip,zip
 
 env:
   global:
