@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-GO = go
-GO_BUILD = CGO_ENABLED=0 go build -a -installsuffix cgo
+GO = GO111MODULE=on go
+GO_BUILD = GO111MODULE=on CGO_ENABLED=0 go build -a -installsuffix cgo
 
 ifeq ($(OS),Windows_NT)
 	DOT_EXE = .exe
@@ -28,6 +28,9 @@ cmd/similar/similar$(DOT_EXE):
 
 cmd/unique/unique$(DOT_EXE):
 	$(GO_BUILD) -o cmd/unique/unique$(DOT_EXE) cmd/unique/unique.go
+
+deps:
+	$(GO) mod download
 
 fmt:
 	gofmt -s -w .
@@ -47,9 +50,24 @@ bench:
 check: lint test bench
 
 clean:
+	rm -f coverage.txt
 	rm -f cmd/similar/similar$(DOT_EXE)
 	rm -f cmd/unique/unique$(DOT_EXE)
 
-presubmit: clean check all
+target:
+	for number in 1 2 3 4 ; do \
+		echo $$number ; \
+	done
 
-.PHONY: all fmt vet lint test bench check clean presubmit
+coverage.txt:
+	touch coverage.txt
+	for pkg in $(shell go list ./... | grep -v vendor | grep -v go:); do \
+		$(GO) test -race -coverprofile=profile.out -covermode=atomic "$$pkg"; \
+			touch profile.out ; \
+			cat profile.out >> coverage.txt ; \
+			rm profile.out ; \
+	done
+
+presubmit: clean check all coverage.txt
+
+.PHONY: all deps fmt vet lint test bench check clean presubmit

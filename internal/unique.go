@@ -59,6 +59,8 @@ func newUniqueScanMetrics() *uniqueScanMetrics {
 	}
 }
 
+type uniqueStatus struct {
+}
 type sizeBucketedFiles struct {
 	files map[int64]*sameSizeFileSet
 }

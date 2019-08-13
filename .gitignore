@@ -24,6 +24,7 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+coverage.txt
 
 cmd/similar/similar
 cmd/unique/unique

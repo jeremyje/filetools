@@ -41,3 +41,4 @@ go:
 script:
   - make all
   - make check
+  - make coverage.txt
