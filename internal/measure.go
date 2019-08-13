@@ -55,10 +55,11 @@ func (m *measure) doneAt(end time.Time) {
 }
 
 func (m *measure) print() {
-	fmt.Printf("- %s", m.String())
+	fmt.Printf("- %s\n", m.String())
 }
 
 func (m *measure) sub(label string) *measure {
+	fmt.Printf("- %s\n", label)
 	sub := newMeasure(label)
 	m.subs = append(m.subs, sub)
 	return sub

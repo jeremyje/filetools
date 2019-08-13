@@ -249,21 +249,27 @@ func Unique(p *UniqueParams) error {
 
 func uniqueScan(p *UniqueParams) (*uniqueContext, error) {
 	uc := newUniqueContext()
-	fmt.Printf("- scanning\n")
+	m := newMeasure("duplicate file scan")
+	defer m.done()
+	step := m.sub("scan file system")
 	err := shardedMultiwalk(p.Paths, uc)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot scan files for uniqueness")
 	}
-	fmt.Printf("- merge results\n")
+	step.done()
+
+	step = m.sub("merge results")
 	uc = uc.merge()
-	fmt.Printf("- hashing\n")
+	step.done()
+	step = m.sub("hash files")
 	uc.hashFiles()
+	step.done()
 	if p.Verbose {
 		uc.dump()
 	}
-	fmt.Printf("- find duplicates\n")
+	step = m.sub("find duplicates")
 	report := uc.findDuplicates()
-	fmt.Printf("\nDuplicates found\n")
+	step.done()
 	if p.Verbose {
 		for hash, dup := range report.Duplicates {
 			fmt.Printf("%s %+v\n", hash, dup.Names)
