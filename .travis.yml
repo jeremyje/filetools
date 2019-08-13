@@ -17,6 +17,14 @@ dist: bionic
 language: go
 go_import_path: github.com/jeremyje/filetools
 
+matrix:
+  include:
+  - os: windows
+    env: OS_BUILD=windows
+    before_install:
+    - choco install cygwin
+    - C:\\tools\\cygwin\\cygwinsetup.exe -q -P make,unzip,zip
+
 env:
   global:
   - GO111MODULE="on"
