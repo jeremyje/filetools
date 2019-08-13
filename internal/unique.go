@@ -16,10 +16,12 @@ package internal
 
 import (
 	"fmt"
+	"github.com/gosuri/uilive"
 	"github.com/pkg/errors"
 	"io"
 	"os"
 	"sync"
+	"time"
 )
 
 // UniqueParams is the parameters for finding duplicate files in a directory structure.
@@ -35,10 +37,12 @@ type UniqueParams struct {
 }
 
 type uniqueScanMetrics struct {
-	fileSizeCounter  *counter
-	fileCounter      *counter
-	filesToHash      *counter
-	filesToHashBytes *counter
+	fileSizeCounter           *counter
+	fileCounter               *counter
+	filesToHash               *counter
+	filesToHashBytes          *counter
+	processedFilesToHash      *counter
+	processedFilesToHashBytes *counter
 }
 
 func (usm *uniqueScanMetrics) print() {
@@ -47,20 +51,59 @@ func (usm *uniqueScanMetrics) print() {
 	fmt.Printf("%s\n", usm.fileSizeCounter.String())
 	fmt.Printf("%s\n", usm.filesToHash.String())
 	fmt.Printf("%s\n", usm.filesToHashBytes.String())
+	fmt.Printf("%s\n", usm.processedFilesToHash.String())
+	fmt.Printf("%s\n", usm.processedFilesToHashBytes.String())
 	fmt.Printf("\n\n")
 }
 
 func newUniqueScanMetrics() *uniqueScanMetrics {
 	return &uniqueScanMetrics{
-		fileSizeCounter:  newCounter("file-size"),
-		fileCounter:      newCounter("files"),
-		filesToHash:      newCounter("files-to-hash"),
-		filesToHashBytes: newCounter("files-to-hash-by-bytes"),
+		fileSizeCounter:           newCounter("file-size"),
+		fileCounter:               newCounter("files"),
+		filesToHash:               newCounter("files-to-hash"),
+		filesToHashBytes:          newCounter("files-to-hash-by-bytes"),
+		processedFilesToHash:      newCounter("processed-files-to-hash"),
+		processedFilesToHashBytes: newCounter("processed-files-to-hash-by-bytes"),
 	}
 }
 
 type uniqueStatus struct {
+	label    string
+	rootM    *measure
+	w        *uilive.Writer
+	currentM *measure
 }
+
+func newUniqueStatus() *uniqueStatus {
+	w := uilive.New()
+	w.RefreshInterval = time.Second * 5
+	w.Start()
+	return &uniqueStatus{
+		w:     w,
+		label: "Starting Scan...",
+		rootM: newMeasure("Duplicate File Scan"),
+	}
+}
+
+// Close stops live update status line.
+func (us *uniqueStatus) Close() {
+	us.rootM.done()
+	us.w.Stop()
+}
+
+func (us *uniqueStatus) set(label string) {
+	us.label = label
+	if us.currentM != nil {
+		us.currentM.done()
+	}
+	us.currentM = us.rootM.sub(label)
+	fmt.Fprintf(us.w, "%s\n", label)
+}
+
+func (us *uniqueStatus) detail(d string) {
+	fmt.Fprintf(us.w, "%s: %s\n", us.label, d)
+}
+
 type sizeBucketedFiles struct {
 	files map[int64]*sameSizeFileSet
 }
@@ -135,12 +178,14 @@ func newFilesWithSameSize(first *fileData) *filesWithSameSize {
 type uniqueWalkShard struct {
 	filesBySize map[int64]*filesWithSameSize
 	metrics     *uniqueScanMetrics
+	status      *uniqueStatus
 }
 
-func newUniqueWalkShard(metrics *uniqueScanMetrics) *uniqueWalkShard {
+func newUniqueWalkShard(status *uniqueStatus, metrics *uniqueScanMetrics) *uniqueWalkShard {
 	return &uniqueWalkShard{
 		filesBySize: map[int64]*filesWithSameSize{},
 		metrics:     metrics,
+		status:      status,
 	}
 }
 
@@ -166,6 +211,7 @@ func (us *uniqueWalkShard) accept(path string, info os.FileInfo, err error) erro
 	} else {
 		us.filesBySize[size] = newFilesWithSameSize(data)
 	}
+	us.status.detail(fmt.Sprintf("%d files, %s", us.metrics.fileCounter.value(), sizeString(us.metrics.fileSizeCounter.value())))
 	return nil
 }
 
@@ -178,10 +224,16 @@ func (us *uniqueWalkShard) hashFiles() error {
 	}
 	us.metrics.print()
 
-	for _, f := range us.filesBySize {
+	for size, f := range us.filesBySize {
 		if len(f.files) > 1 {
 			for _, fileData := range f.files {
 				_, err := fileData.getHash()
+
+				us.metrics.processedFilesToHash.inc()
+				us.metrics.processedFilesToHashBytes.incBy(size)
+				us.status.detail(fmt.Sprintf("%d/%d files, %s/%s",
+					us.metrics.processedFilesToHash.value(), us.metrics.fileCounter.value(),
+					sizeString(us.metrics.processedFilesToHashBytes.value()), sizeString(us.metrics.filesToHashBytes.value())))
 				if err != nil {
 					return err
 				}
@@ -229,10 +281,11 @@ func (us *uniqueWalkShard) findDuplicates() *DuplicateFileReport {
 type uniqueContext struct {
 	shards  []*uniqueWalkShard
 	metrics *uniqueScanMetrics
+	status  *uniqueStatus
 }
 
 func (uc *uniqueContext) NewWalkShard() func(string, os.FileInfo, error) error {
-	s := newUniqueWalkShard(uc.metrics)
+	s := newUniqueWalkShard(uc.status, uc.metrics)
 	uc.shards = append(uc.shards, s)
 	return s.accept
 }
@@ -258,12 +311,16 @@ func (uc *uniqueContext) hashFiles() error {
 func newUniqueContext() *uniqueContext {
 	return &uniqueContext{
 		metrics: newUniqueScanMetrics(),
+		status:  newUniqueStatus(),
 	}
 }
 
 func (uc *uniqueContext) merge() *uniqueContext {
 	if len(uc.shards) > 1 {
-		merged := newUniqueContext()
+		merged := &uniqueContext{
+			metrics: uc.metrics,
+			status:  uc.status,
+		}
 		merged.NewWalkShard()
 		shard := merged.shards[0]
 		for _, source := range uc.shards {
@@ -281,6 +338,11 @@ func (uc *uniqueContext) findDuplicates() *DuplicateFileReport {
 	return nil
 }
 
+// Close closes the context.
+func (uc *uniqueContext) Close() {
+	uc.status.Close()
+}
+
 // Unique finds all the duplicate files in a directory structure based on the UniqueParams
 func Unique(p *UniqueParams) error {
 	_, err := uniqueScan(p)
@@ -292,33 +354,33 @@ func Unique(p *UniqueParams) error {
 
 func uniqueScan(p *UniqueParams) (*uniqueContext, error) {
 	uc := newUniqueContext()
-	m := newMeasure("duplicate file scan")
-	defer m.done()
-	step := m.sub("scan file system")
+	defer uc.Close()
+
+	uc.status.set("Scan Files")
 	err := shardedMultiwalk(p.Paths, uc)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot scan files for uniqueness")
 	}
-	step.done()
 	uc.metrics.print()
 
-	step = m.sub("merge results")
+	uc.status.set("Merge Scans")
 	uc = uc.merge()
-	step.done()
-	step = m.sub("hash files")
+
+	uc.status.set("Hash Candidates")
 	uc.hashFiles()
-	step.done()
 	if p.Verbose {
 		uc.dump()
 	}
-	step = m.sub("find duplicates")
+
+	uc.status.set("Group Duplicates")
 	report := uc.findDuplicates()
-	step.done()
 	if p.Verbose {
 		for hash, dup := range report.Duplicates {
 			fmt.Printf("%s %+v\n", hash, dup.Names)
 		}
 	}
+
+	uc.status.set("Render Report")
 	err = reportDeplicates(p, report)
 	if err != nil {
 		return nil, err

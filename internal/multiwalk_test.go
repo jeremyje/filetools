@@ -40,7 +40,6 @@ func TestMultiWalk(t *testing.T) {
 				"multiwalk.go", "multiwalk_test.go",
 				"report.go",
 				"similar.go", "similar_test.go",
-				"status.go",
 				"unique.go", "unique_test.go",
 				"util.go", "util_test.go",
 			},
