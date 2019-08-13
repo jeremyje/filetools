@@ -34,5 +34,7 @@ func newStatus() *status {
 	}
 }
 
-// Walking File System: 50 files, 900KiB
-// Hashing Files: 10/50 files, 100KiB/900KiB
+//c Scan Files: 50 files, 900KiB
+// Scan Files: 1m50s (50 files, 900KiB)
+// Merge Results: 1s (7 results, 30 candidates)
+//c Hashing Files: 10/50 files, 100KiB/900KiB

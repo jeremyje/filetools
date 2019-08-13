@@ -42,3 +42,6 @@ script:
   - make all
   - make check
   - make coverage.txt
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
