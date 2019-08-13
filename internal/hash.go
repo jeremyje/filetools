@@ -66,6 +66,9 @@ func hashFile(filename string, hashAlgorithmName string) (string, error) {
 }
 
 func hashFileAsBytes(filename string, h hash.Hash) ([]byte, error) {
+	if h == nil {
+		return []byte{}, errors.Errorf("hash algorithm to be applied to %s was nil", filename)
+	}
 	absPath, err := filepath.Abs(filename)
 	if err != nil {
 		return []byte{}, errors.Wrapf(err, "cannot get absolute file path for %s", filename)

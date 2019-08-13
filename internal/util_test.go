@@ -16,6 +16,7 @@ package internal
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -130,4 +131,9 @@ func TestEvenOdd(t *testing.T) {
 	assert.True(eo.next())
 	assert.False(eo.next())
 	assert.True(eo.next())
+}
+
+func TestCheck(t *testing.T) {
+	Check(nil)
+	Check(errors.New("lol"))
 }

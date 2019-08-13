@@ -52,6 +52,7 @@ func TestMeasure(t *testing.T) {
 	m1.done()
 	time.Sleep(10 * time.Millisecond)
 	m.done()
+	m.done()
 
 	if m.duration < m1.duration {
 		t.Errorf("Expected (m) %s >= (m1) %s", m, m1)

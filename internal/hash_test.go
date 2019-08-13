@@ -141,6 +141,32 @@ func TestHashFileErrorCases(t *testing.T) {
 	assert.Contains(err.Error(), "lol")
 }
 
+func TestHashFileAsBytesErrorCases(t *testing.T) {
+	assert := assert.New(t)
+
+	hashCode, err := hashFileAsBytes("http://lol", nil)
+	assert.Empty(hashCode)
+	assert.Contains(err.Error(), "was nil")
+}
+
+type angryReadWriter struct {
+}
+
+func (a *angryReadWriter) Read([]byte) (int, error) {
+	return 0, errors.New("i'm angry")
+}
+func (a *angryReadWriter) Write([]byte) (int, error) {
+	return 0, errors.New("i'm angry")
+}
+
+func TestComputeHashErrorCases(t *testing.T) {
+	assert := assert.New(t)
+
+	hashCode, err := computeHash(&angryReadWriter{}, md5.New())
+	assert.Empty(hashCode)
+	assert.Contains(err.Error(), "failed to hash data")
+}
+
 func TestHashFile(t *testing.T) {
 	var testCases = []struct {
 		fileName      string

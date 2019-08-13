@@ -125,7 +125,7 @@ func TestFindSimilarFiles(t *testing.T) {
 			if len(tc.matches) == 0 {
 				assert.Empty(similarMap)
 			} else {
-				assert.Equal(tc.matches, similarMap)
+				assert.Equal(fromSlashMap(tc.matches), fromSlashMap(similarMap))
 			}
 		})
 	}

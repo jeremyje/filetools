@@ -77,7 +77,7 @@ func TestMultiWalk(t *testing.T) {
 				return nil
 			})
 			assert.Nil(err)
-			assert.ElementsMatch(tc.expected, actual)
+			assert.ElementsMatch(fromSlashList(tc.expected), fromSlashList(actual))
 		})
 	}
 }
