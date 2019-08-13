@@ -30,9 +30,14 @@ import (
 	"testing"
 )
 
+const (
+	kb = 1024
+	mb = 1024 * 1024
+)
+
 func BenchmarkHashFunctionsBySize(b *testing.B) {
 	functions := []string{"md5", "sha1", "sha224", "sha256", "sha384", "sha512", "crc32", "crc64"}
-	sizes := []int64{1024, 4096, 1024 * 1024}
+	sizes := []int64{kb, 4 * kb, 16 * kb, mb, 16 * mb}
 	for _, functionName := range functions {
 		for _, size := range sizes {
 			filename := mustFileOfLength(size)

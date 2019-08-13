@@ -19,8 +19,9 @@ go_import_path: github.com/jeremyje/filetools
 
 matrix:
   include:
+  - os: linux
+  - os: osx
   - os: windows
-    env: OS_BUILD=windows
     before_install:
     - choco install cygwin
     - C:\\tools\\cygwin\\cygwinsetup.exe -q -P make,unzip,zip
@@ -33,11 +34,6 @@ go:
   - "1.11"
   - "1.12"
   - master
-
-os:
-  - linux
-  - osx
-  - windows
 
 script:
   - make all
