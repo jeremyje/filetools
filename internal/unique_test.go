@@ -25,6 +25,7 @@ func TestUnique(t *testing.T) {
 		params *UniqueParams
 	}{
 		{&UniqueParams{Paths: []string{"."}}},
+		{&UniqueParams{Paths: []string{"../testdata/"}}},
 	}
 	for _, tc := range testCases {
 		tc := tc
