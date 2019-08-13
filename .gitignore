@@ -29,3 +29,5 @@ cmd/similar/similar
 cmd/unique/unique
 
 output.html
+
+testdata/autogen/

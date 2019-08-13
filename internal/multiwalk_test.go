@@ -34,7 +34,8 @@ func TestMultiWalk(t *testing.T) {
 		{
 			[]string{"."},
 			[]string{
-				"doc.go", "hash.go", "hash_test.go", "multiwalk.go", "multiwalk_test.go",
+				"doc.go", "hash.go", "hash_test.go", "measure.go",
+				"measure_test.go", "multiwalk.go", "multiwalk_test.go",
 				"report.go", "similar.go", "similar_test.go", "unique.go",
 				"unique_test.go", "util.go", "util_test.go",
 			},

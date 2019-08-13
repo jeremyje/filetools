@@ -26,8 +26,24 @@ import (
 	"hash"
 	"hash/crc32"
 	"hash/crc64"
+	"os"
 	"testing"
 )
+
+func BenchmarkHashFunctionsBySize(b *testing.B) {
+	functions := []string{"md5", "sha1", "sha224", "sha256", "sha384", "sha512", "crc32", "crc64"}
+	sizes := []int64{1024, 4096, 1024 * 1024}
+	for _, functionName := range functions {
+		for _, size := range sizes {
+			filename := mustFileOfLength(size)
+			b.Run(fmt.Sprintf("%s x %d", functionName, size), func(b *testing.B) {
+				for i := 0; i < b.N; i++ {
+					hashFile(filename, functionName)
+				}
+			})
+		}
+	}
+}
 
 func BenchmarkHashFunctions(b *testing.B) {
 	var testCases = []struct {
@@ -52,6 +68,27 @@ func BenchmarkHashFunctions(b *testing.B) {
 			}
 		})
 	}
+}
+
+func mustFileOfLength(size int64) string {
+	filename := fmt.Sprintf("../testdata/autogen/%d", size)
+	err := os.MkdirAll("../testdata/autogen/", 0755)
+	if err != nil {
+		panic(err)
+	}
+	if fileExists(filename) {
+		return filename
+	}
+	f, err := os.Create(filename)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	for size > 0 {
+		f.Write([]byte{byte(size)})
+		size -= 1
+	}
+	return filename
 }
 
 func TestNewHashFromName(t *testing.T) {
