@@ -29,12 +29,12 @@ type shardableWalkFunction interface {
 func filesOnly(f func(string, os.FileInfo, error) error) func(string, os.FileInfo, error) error {
 	return func(path string, info os.FileInfo, err error) error {
 		if info == nil {
-			return err
+			return nil
 		}
 		if info.Mode()&os.ModeType == 0 {
-			return f(path, info, err)
+			f(path, info, err)
 		}
-		return err
+		return nil
 	}
 }
 

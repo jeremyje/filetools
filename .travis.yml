@@ -19,8 +19,6 @@ go_import_path: github.com/jeremyje/filetools
 
 matrix:
   include:
-  - os: linux
-  - os: osx
   - os: windows
     before_install:
     - choco install cygwin
@@ -29,6 +27,10 @@ matrix:
 env:
   global:
   - GO111MODULE="on"
+
+os:
+  - linux
+  - osx
 
 go:
   - "1.11"

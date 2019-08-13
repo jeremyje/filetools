@@ -15,9 +15,34 @@
 package internal
 
 import (
+	"github.com/stretchr/testify/assert"
+	"sync"
 	"testing"
 	"time"
 )
+
+func TestCounter(t *testing.T) {
+	assert := assert.New(t)
+	c := newCounter("test")
+	assert.Equal(int64(0), c.value())
+	c.inc()
+	assert.Equal(int64(1), c.value())
+	c.incBy(10)
+	assert.Equal(int64(11), c.value())
+	var wg sync.WaitGroup
+	incs := 100
+	for incs > 0 {
+		wg.Add(1)
+		go func() {
+			c.inc()
+			wg.Done()
+		}()
+		incs--
+	}
+	wg.Wait()
+	assert.Equal(int64(111), c.value())
+	assert.Equal("test 111", c.String())
+}
 
 func TestMeasure(t *testing.T) {
 	m := newMeasure("root")

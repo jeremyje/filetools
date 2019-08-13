@@ -16,8 +16,37 @@ package internal
 
 import (
 	"fmt"
+	"sync/atomic"
 	"time"
 )
+
+type counter struct {
+	val   *int64
+	label string
+}
+
+func (c *counter) String() string {
+	return fmt.Sprintf("%s %v", c.label, c.value())
+}
+
+func (c *counter) inc() {
+	c.incBy(1)
+}
+
+func (c *counter) incBy(val int64) {
+	atomic.AddInt64(c.val, val)
+}
+
+func (c *counter) value() int64 {
+	return atomic.LoadInt64(c.val)
+}
+
+func newCounter(label string) *counter {
+	return &counter{
+		label: label,
+		val:   new(int64),
+	}
+}
 
 type measure struct {
 	start    time.Time

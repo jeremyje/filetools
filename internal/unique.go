@@ -34,6 +34,31 @@ type UniqueParams struct {
 	HashFunction string
 }
 
+type uniqueScanMetrics struct {
+	fileSizeCounter  *counter
+	fileCounter      *counter
+	filesToHash      *counter
+	filesToHashBytes *counter
+}
+
+func (usm *uniqueScanMetrics) print() {
+	fmt.Printf("metrics\n\n")
+	fmt.Printf("%s\n", usm.fileCounter.String())
+	fmt.Printf("%s\n", usm.fileSizeCounter.String())
+	fmt.Printf("%s\n", usm.filesToHash.String())
+	fmt.Printf("%s\n", usm.filesToHashBytes.String())
+	fmt.Printf("\n\n")
+}
+
+func newUniqueScanMetrics() *uniqueScanMetrics {
+	return &uniqueScanMetrics{
+		fileSizeCounter:  newCounter("file-size"),
+		fileCounter:      newCounter("files"),
+		filesToHash:      newCounter("files-to-hash"),
+		filesToHashBytes: newCounter("files-to-hash-by-bytes"),
+	}
+}
+
 type sizeBucketedFiles struct {
 	files map[int64]*sameSizeFileSet
 }
@@ -107,11 +132,13 @@ func newFilesWithSameSize(first *fileData) *filesWithSameSize {
 
 type uniqueWalkShard struct {
 	filesBySize map[int64]*filesWithSameSize
+	metrics     *uniqueScanMetrics
 }
 
-func newUniqueWalkShard() *uniqueWalkShard {
+func newUniqueWalkShard(metrics *uniqueScanMetrics) *uniqueWalkShard {
 	return &uniqueWalkShard{
 		filesBySize: map[int64]*filesWithSameSize{},
+		metrics:     metrics,
 	}
 }
 
@@ -127,6 +154,8 @@ func (us *uniqueWalkShard) mergeFrom(source *uniqueWalkShard) {
 
 func (us *uniqueWalkShard) accept(path string, info os.FileInfo, err error) error {
 	size := info.Size()
+	us.metrics.fileSizeCounter.incBy(size)
+	us.metrics.fileCounter.inc()
 	data := &fileData{
 		name: path,
 	}
@@ -139,6 +168,14 @@ func (us *uniqueWalkShard) accept(path string, info os.FileInfo, err error) erro
 }
 
 func (us *uniqueWalkShard) hashFiles() error {
+	for size, f := range us.filesBySize {
+		if len(f.files) > 1 {
+			us.metrics.filesToHash.incBy(int64(len(f.files)))
+			us.metrics.filesToHashBytes.incBy(int64(len(f.files)) * size)
+		}
+	}
+	us.metrics.print()
+
 	for _, f := range us.filesBySize {
 		if len(f.files) > 1 {
 			for _, fileData := range f.files {
@@ -161,6 +198,7 @@ func newFileWithSameHash(size int64, first string) *FilesWithSameHash {
 
 func (us *uniqueWalkShard) findDuplicates() *DuplicateFileReport {
 	filesByHash := map[string]*FilesWithSameHash{}
+
 	for size, f := range us.filesBySize {
 		if len(f.files) > 1 {
 			for _, fileData := range f.files {
@@ -187,11 +225,12 @@ func (us *uniqueWalkShard) findDuplicates() *DuplicateFileReport {
 }
 
 type uniqueContext struct {
-	shards []*uniqueWalkShard
+	shards  []*uniqueWalkShard
+	metrics *uniqueScanMetrics
 }
 
 func (uc *uniqueContext) NewWalkShard() func(string, os.FileInfo, error) error {
-	s := newUniqueWalkShard()
+	s := newUniqueWalkShard(uc.metrics)
 	uc.shards = append(uc.shards, s)
 	return s.accept
 }
@@ -215,7 +254,9 @@ func (uc *uniqueContext) hashFiles() error {
 }
 
 func newUniqueContext() *uniqueContext {
-	return &uniqueContext{}
+	return &uniqueContext{
+		metrics: newUniqueScanMetrics(),
+	}
 }
 
 func (uc *uniqueContext) merge() *uniqueContext {
@@ -257,6 +298,7 @@ func uniqueScan(p *UniqueParams) (*uniqueContext, error) {
 		return nil, errors.Wrap(err, "cannot scan files for uniqueness")
 	}
 	step.done()
+	uc.metrics.print()
 
 	step = m.sub("merge results")
 	uc = uc.merge()
