@@ -30,4 +30,5 @@ func TestFromFlags(t *testing.T) {
 	assert.False(p.Verbose)
 	assert.True(p.Overwrite)
 	assert.Equal(p.HashFunction, "crc64")
+	assert.True(p.CoarseHashing)
 }

@@ -26,6 +26,9 @@
 *.out
 coverage.txt
 
+*.pem
+*.backup
+
 cmd/similar/similar
 cmd/unique/unique
 

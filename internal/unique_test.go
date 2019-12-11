@@ -16,16 +16,18 @@ package internal
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestUnique(t *testing.T) {
 	var testCases = []struct {
 		params *UniqueParams
 	}{
-		{&UniqueParams{Paths: []string{"."}}},
-		{&UniqueParams{Paths: []string{"../testdata/"}}},
+		{&UniqueParams{Paths: []string{"."}, StatusFrequency: time.Second}},
+		{&UniqueParams{Paths: []string{"../testdata/"}, StatusFrequency: time.Second}},
 	}
 	for _, tc := range testCases {
 		tc := tc

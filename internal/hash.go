@@ -20,7 +20,6 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"fmt"
-	"github.com/pkg/errors"
 	"hash"
 	"hash/crc32"
 	"hash/crc64"
@@ -28,6 +27,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 var (
@@ -65,17 +66,24 @@ func hashFile(filename string, hashAlgorithmName string) (string, error) {
 	return toHexString(hashFileAsBytes(filename, h))
 }
 
+func openFile(filename string) (*os.File, error) {
+	absPath, err := filepath.Abs(filename)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot get absolute file path for %s", filename)
+	}
+	f, err := os.Open(absPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot open file, %s, for hashing", absPath)
+	}
+	return f, nil
+}
 func hashFileAsBytes(filename string, h hash.Hash) ([]byte, error) {
 	if h == nil {
 		return []byte{}, errors.Errorf("hash algorithm to be applied to %s was nil", filename)
 	}
-	absPath, err := filepath.Abs(filename)
+	f, err := openFile(filename)
 	if err != nil {
-		return []byte{}, errors.Wrapf(err, "cannot get absolute file path for %s", filename)
-	}
-	f, err := os.Open(absPath)
-	if err != nil {
-		return []byte{}, errors.Wrapf(err, "cannot open file, %s, for hashing", absPath)
+		return []byte{}, err
 	}
 	// defer f.Close() is not called for performance reasons.
 	res, err := computeHash(f, h)
@@ -83,8 +91,8 @@ func hashFileAsBytes(filename string, h hash.Hash) ([]byte, error) {
 	return res, err
 }
 
-func computeHash(w io.ReadWriter, h hash.Hash) ([]byte, error) {
-	if _, err := io.Copy(h, w); err != nil {
+func computeHash(r io.Reader, h hash.Hash) ([]byte, error) {
+	if _, err := io.Copy(h, r); err != nil {
 		return []byte{}, errors.Wrap(err, "failed to hash data")
 	}
 	return h.Sum(nil), nil
@@ -95,4 +103,34 @@ func toHexString(hashCode []byte, err error) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("%x", hashCode), nil
+}
+
+func coarseHashFile(filename string, hashAlgorithmName string, bufferSize int) (string, error) {
+	h := newHashFromName(hashAlgorithmName)
+	if h == nil {
+		return "", errors.Errorf("algorithm %s is not supported", hashAlgorithmName)
+	}
+	f, err := openFile(filename)
+	if err != nil {
+		return "", err
+	}
+	// defer f.Close() is not called for performance reasons.
+	res, err := computeCoarseHash(f, bufferSize, h)
+	f.Close()
+	return toHexString(res, err)
+}
+
+func computeCoarseHash(r io.Reader, bufferSize int, h hash.Hash) ([]byte, error) {
+	buf := make([]byte, bufferSize)
+	readBytes, err := io.ReadFull(r, buf)
+	if err != nil {
+		return []byte{}, err
+	} else if readBytes != bufferSize {
+		return []byte{}, errors.Errorf("read %d bytes but wanted %d bytes", readBytes, bufferSize)
+	}
+
+	if _, err = h.Write(buf); err != nil {
+		return []byte{}, err
+	}
+	return h.Sum(nil), nil
 }

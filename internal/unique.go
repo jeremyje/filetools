@@ -16,24 +16,33 @@ package internal
 
 import (
 	"fmt"
-	"github.com/gosuri/uilive"
-	"github.com/pkg/errors"
 	"io"
+	"log"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/gosuri/uilive"
+	"github.com/pkg/errors"
+)
+
+const (
+	coarseHashMinFileSize = 10 * 1024 * 1024
+	coarseHashChunkSize   = 64 * 1024
 )
 
 // UniqueParams is the parameters for finding duplicate files in a directory structure.
 type UniqueParams struct {
-	Paths        []string
-	MinSize      int64
-	DeletePaths  []string
-	DryRun       bool
-	ReportFile   string
-	Verbose      bool
-	Overwrite    bool
-	HashFunction string
+	Paths           []string
+	MinSize         int64
+	DeletePaths     []string
+	DryRun          bool
+	ReportFile      string
+	Verbose         bool
+	Overwrite       bool
+	HashFunction    string
+	StatusFrequency time.Duration
+	CoarseHashing   bool
 }
 
 type uniqueScanMetrics struct {
@@ -68,20 +77,23 @@ func newUniqueScanMetrics() *uniqueScanMetrics {
 }
 
 type uniqueStatus struct {
-	label    string
-	rootM    *measure
-	w        *uilive.Writer
-	currentM *measure
+	label           string
+	rootM           *measure
+	w               *uilive.Writer
+	currentM        *measure
+	lastWrite       time.Time
+	updateFrequency time.Duration
 }
 
-func newUniqueStatus() *uniqueStatus {
+func newUniqueStatus(updateFrequency time.Duration) *uniqueStatus {
 	w := uilive.New()
-	w.RefreshInterval = time.Second * 5
+	w.RefreshInterval = updateFrequency
 	w.Start()
 	return &uniqueStatus{
-		w:     w,
-		label: "Starting Scan...",
-		rootM: newMeasure("Duplicate File Scan"),
+		w:               w,
+		label:           "Starting Scan...",
+		rootM:           newMeasure("Duplicate File Scan"),
+		updateFrequency: updateFrequency,
 	}
 }
 
@@ -101,7 +113,11 @@ func (us *uniqueStatus) set(label string) {
 }
 
 func (us *uniqueStatus) detail(d string) {
-	fmt.Fprintf(us.w, "%s: %s\n", us.label, d)
+	now := time.Now()
+	if us.lastWrite.Add(us.updateFrequency).Before(now) {
+		fmt.Fprintf(us.w, "%s: %s\n", us.label, d)
+		us.lastWrite = now
+	}
 }
 
 type sizeBucketedFiles struct {
@@ -113,9 +129,23 @@ type sameSizeFileSet struct {
 }
 
 type fileData struct {
-	name      string
-	hash      string
-	hashError error
+	name       string
+	coarseHash string
+	hash       string
+	hashError  error
+}
+
+func (fd *fileData) getCoarseHash() (string, error) {
+	if len(fd.coarseHash) > 0 {
+		return fd.coarseHash, nil
+	}
+	if fd.hashError != nil {
+		return "", fd.hashError
+	}
+	coarseHash, err := coarseHashFile(fd.name, "crc64", coarseHashChunkSize)
+	fd.hashError = err
+	fd.coarseHash = coarseHash
+	return coarseHash, err
 }
 
 func (fd *fileData) getHash() (string, error) {
@@ -126,7 +156,7 @@ func (fd *fileData) getHash() (string, error) {
 		return "", fd.hashError
 	}
 
-	fileHash, err := hashFile(fd.name, "sha256")
+	fileHash, err := hashFile(fd.name, "md5")
 	fd.hashError = err
 	fd.hash = fileHash
 	return fileHash, err
@@ -215,20 +245,75 @@ func (us *uniqueWalkShard) accept(path string, info os.FileInfo, err error) erro
 	return nil
 }
 
-func (us *uniqueWalkShard) hashFiles() error {
+func (us *uniqueWalkShard) hashFiles(enableCoarseHashing bool) error {
 	for size, f := range us.filesBySize {
-		if len(f.files) > 1 {
-			us.metrics.filesToHash.incBy(int64(len(f.files)))
-			us.metrics.filesToHashBytes.incBy(int64(len(f.files)) * size)
+		numFiles := len(f.files)
+		if numFiles > 1 {
+			us.metrics.filesToHash.incBy(int64(numFiles))
+			us.metrics.filesToHashBytes.incBy(int64(numFiles) * size)
+		} else {
+			delete(us.filesBySize, size)
 		}
 	}
 	us.metrics.print()
 
-	for size, f := range us.filesBySize {
-		if len(f.files) > 1 {
-			for _, fileData := range f.files {
-				_, err := fileData.getHash()
+	if enableCoarseHashing {
+		fbsLen := len(us.filesBySize)
+		i := 0
+		for size, f := range us.filesBySize {
+			us.status.detail(fmt.Sprintf("Coarse Hash: %d of %d", i, fbsLen))
+			i++
+			if len(f.files) > 1 {
+				if size > coarseHashMinFileSize {
+					matches := map[string][]*fileData{}
+					newFiles := []*fileData{}
+					for _, fd := range f.files {
+						hash, err := fd.getCoarseHash()
+						if err != nil {
+							log.Printf("error coarse hashing %s, skipping\n", fd.name)
+							newFiles = append(newFiles, fd)
+							continue
+						}
+						v, ok := matches[hash]
+						if ok {
+							matches[hash] = append(v, fd)
+						} else {
+							matches[hash] = []*fileData{fd}
+						}
+					}
 
+					for _, v := range matches {
+						if len(v) > 1 {
+							newFiles = append(newFiles, v...)
+						}
+					}
+					f.files = newFiles
+				}
+			}
+		}
+		us.metrics.print()
+	}
+
+	i := 0
+	fbsLen := len(us.filesBySize)
+	for size, f := range us.filesBySize {
+		us.status.detail(fmt.Sprintf("Real Hash: %d of %d", i, fbsLen))
+		i++
+		if len(f.files) > 1 {
+			matches := map[string][]*fileData{}
+			newFiles := []*fileData{}
+			for _, fd := range f.files {
+				hash, err := fd.getHash()
+				if err != nil {
+					newFiles = append(newFiles, fd)
+					continue
+				}
+				v, ok := matches[hash]
+				if ok {
+					matches[hash] = append(v, fd)
+				} else {
+					matches[hash] = []*fileData{fd}
+				}
 				us.metrics.processedFilesToHash.inc()
 				us.metrics.processedFilesToHashBytes.incBy(size)
 				us.status.detail(fmt.Sprintf("%d/%d files, %s/%s",
@@ -238,6 +323,13 @@ func (us *uniqueWalkShard) hashFiles() error {
 					return err
 				}
 			}
+
+			for _, v := range matches {
+				if len(v) > 1 {
+					newFiles = append(newFiles, v...)
+				}
+			}
+			f.files = newFiles
 		}
 	}
 	return nil
@@ -298,20 +390,20 @@ func (uc *uniqueContext) dump() {
 	}
 }
 
-func (uc *uniqueContext) hashFiles() error {
+func (uc *uniqueContext) hashFiles(enableCoarseHashing bool) error {
 	if len(uc.shards) > 1 {
 		return errors.New("cannot has multi-sharded context, use mergeFrom")
 	}
 	if len(uc.shards) == 1 {
-		return uc.shards[0].hashFiles()
+		return uc.shards[0].hashFiles(enableCoarseHashing)
 	}
 	return nil
 }
 
-func newUniqueContext() *uniqueContext {
+func newUniqueContext(updateFrequency time.Duration) *uniqueContext {
 	return &uniqueContext{
 		metrics: newUniqueScanMetrics(),
-		status:  newUniqueStatus(),
+		status:  newUniqueStatus(updateFrequency),
 	}
 }
 
@@ -353,7 +445,7 @@ func Unique(p *UniqueParams) error {
 }
 
 func uniqueScan(p *UniqueParams) (*uniqueContext, error) {
-	uc := newUniqueContext()
+	uc := newUniqueContext(p.StatusFrequency)
 	defer uc.Close()
 
 	uc.status.set("Scan Files")
@@ -367,7 +459,7 @@ func uniqueScan(p *UniqueParams) (*uniqueContext, error) {
 	uc = uc.merge()
 
 	uc.status.set("Hash Candidates")
-	uc.hashFiles()
+	uc.hashFiles(p.CoarseHashing)
 	if p.Verbose {
 		uc.dump()
 	}
