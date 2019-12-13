@@ -33,6 +33,10 @@ func (c *counter) inc() {
 	c.incBy(1)
 }
 
+func (c *counter) set(val int64) {
+	atomic.StoreInt64(c.val, val)
+}
+
 func (c *counter) incBy(val int64) {
 	atomic.AddInt64(c.val, val)
 }

@@ -19,6 +19,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -43,6 +44,7 @@ type UniqueParams struct {
 	HashFunction    string
 	StatusFrequency time.Duration
 	CoarseHashing   bool
+	EnableFilePprof bool
 }
 
 type uniqueScanMetrics struct {
@@ -83,9 +85,11 @@ type uniqueStatus struct {
 	currentM        *measure
 	lastWrite       time.Time
 	updateFrequency time.Duration
+	enableFilePprof bool
+	startTime       time.Time
 }
 
-func newUniqueStatus(updateFrequency time.Duration) *uniqueStatus {
+func newUniqueStatus(updateFrequency time.Duration, enableFilePprof bool) *uniqueStatus {
 	w := uilive.New()
 	w.RefreshInterval = updateFrequency
 	w.Start()
@@ -94,6 +98,8 @@ func newUniqueStatus(updateFrequency time.Duration) *uniqueStatus {
 		label:           "Starting Scan...",
 		rootM:           newMeasure("Duplicate File Scan"),
 		updateFrequency: updateFrequency,
+		enableFilePprof: enableFilePprof,
+		startTime:       time.Now(),
 	}
 }
 
@@ -110,12 +116,16 @@ func (us *uniqueStatus) set(label string) {
 	}
 	us.currentM = us.rootM.sub(label)
 	fmt.Fprintf(us.w, "%s\n", label)
+	if us.enableFilePprof {
+		stopCPUProfile()
+		startCPUProfile(us.startTime.Format("20060102150405") + strings.ReplaceAll(label, " ", "") + ".pprof")
+	}
 }
 
 func (us *uniqueStatus) detail(d string) {
 	now := time.Now()
 	if us.lastWrite.Add(us.updateFrequency).Before(now) {
-		fmt.Fprintf(us.w, "%s: %s\n", us.label, d)
+		fmt.Fprintf(us.w, "%s: %s\n\n", us.label, d)
 		us.lastWrite = now
 	}
 }
@@ -294,10 +304,18 @@ func (us *uniqueWalkShard) hashFiles(enableCoarseHashing bool) error {
 		us.metrics.print()
 	}
 
+	numFiles := int64(0)
+	totalSize := int64(0)
+	for size, fdList := range us.filesBySize {
+		n := int64(len(fdList.files))
+		numFiles += n
+		totalSize += n * size
+	}
+	us.metrics.filesToHash.set(numFiles)
+	us.metrics.filesToHashBytes.set(totalSize)
 	i := 0
-	fbsLen := len(us.filesBySize)
 	for size, f := range us.filesBySize {
-		us.status.detail(fmt.Sprintf("Real Hash: %d of %d", i, fbsLen))
+		us.status.detail(fmt.Sprintf("Real Hash: %d of %d", i, numFiles))
 		i++
 		if len(f.files) > 1 {
 			matches := map[string][]*fileData{}
@@ -317,7 +335,7 @@ func (us *uniqueWalkShard) hashFiles(enableCoarseHashing bool) error {
 				us.metrics.processedFilesToHash.inc()
 				us.metrics.processedFilesToHashBytes.incBy(size)
 				us.status.detail(fmt.Sprintf("%d/%d files, %s/%s",
-					us.metrics.processedFilesToHash.value(), us.metrics.fileCounter.value(),
+					us.metrics.processedFilesToHash.value(), us.metrics.filesToHash.value(),
 					sizeString(us.metrics.processedFilesToHashBytes.value()), sizeString(us.metrics.filesToHashBytes.value())))
 				if err != nil {
 					return err
@@ -385,7 +403,7 @@ func (uc *uniqueContext) NewWalkShard() func(string, os.FileInfo, error) error {
 func (uc *uniqueContext) dump() {
 	for _, shard := range uc.shards {
 		for size, files := range shard.filesBySize {
-			fmt.Printf("%d %s\n", size, files.String())
+			log.Printf("%d %s\n", size, files.String())
 		}
 	}
 }
@@ -400,10 +418,10 @@ func (uc *uniqueContext) hashFiles(enableCoarseHashing bool) error {
 	return nil
 }
 
-func newUniqueContext(updateFrequency time.Duration) *uniqueContext {
+func newUniqueContext(updateFrequency time.Duration, enableFilePprof bool) *uniqueContext {
 	return &uniqueContext{
 		metrics: newUniqueScanMetrics(),
-		status:  newUniqueStatus(updateFrequency),
+		status:  newUniqueStatus(updateFrequency, enableFilePprof),
 	}
 }
 
@@ -445,7 +463,7 @@ func Unique(p *UniqueParams) error {
 }
 
 func uniqueScan(p *UniqueParams) (*uniqueContext, error) {
-	uc := newUniqueContext(p.StatusFrequency)
+	uc := newUniqueContext(p.StatusFrequency, p.EnableFilePprof)
 	defer uc.Close()
 
 	uc.status.set("Scan Files")
