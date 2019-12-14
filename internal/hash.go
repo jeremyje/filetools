@@ -77,6 +77,7 @@ func openFile(filename string) (*os.File, error) {
 	}
 	return f, nil
 }
+
 func hashFileAsBytes(filename string, h hash.Hash) ([]byte, error) {
 	if h == nil {
 		return []byte{}, errors.Errorf("hash algorithm to be applied to %s was nil", filename)
