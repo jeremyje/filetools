@@ -33,6 +33,18 @@ os:
   - linux
   - osx
 
+addons:
+  apt:
+    packages:
+    # needed for the nfpm pipe:
+    - rpm
+    # needed for the snap pipe:
+    - snapd
+
+install:
+# needed for the snap pipe:
+- sudo snap install snapcraft --classic
+
 go:
   - "1.13"
   - master
@@ -42,5 +54,16 @@ script:
   - make check
   - make coverage.txt
 
+services:
+- docker
+
 after_success:
   - bash <(curl -s https://codecov.io/bash)
+
+deploy:
+- provider: script
+  skip_cleanup: true
+  script: curl -sL https://git.io/goreleaser | bash
+  on:
+    tags: true
+    condition: $TRAVIS_OS_NAME = linux

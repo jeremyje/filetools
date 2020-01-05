@@ -35,4 +35,5 @@ cmd/unique/unique
 
 output.html
 
+dist/
 testdata/autogen/

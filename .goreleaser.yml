@@ -1,0 +1,83 @@
+# Copyright 2020 Jeremy Edwards
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This is an example goreleaser.yaml file with some sane defaults.
+# Make sure to check the documentation at http://goreleaser.com
+before:
+  hooks:
+    # you may remove this if you don't use vgo
+    - go mod tidy
+    # you may remove this if you don't need go generate
+    - go generate ./...
+builds:
+- id: "cleanup"
+  main: ./cmd/cleanup/cleanup.go
+  binary: cleanup
+  env:
+  - CGO_ENABLED=0
+  goarch:
+  - 386
+  - amd64
+  - arm
+  - arm64
+  goos:
+  - linux
+  - windows
+  - osx
+- id: "similar"
+  main: ./cmd/similar/similar.go
+  binary: similar
+  env:
+  - CGO_ENABLED=0
+  goarch:
+  - 386
+  - amd64
+  - arm
+  - arm64
+  goos:
+  - linux
+  - windows
+  - osx
+- id: "unique"
+  main: ./cmd/unique/unique.go
+  binary: unique
+  env:
+  - CGO_ENABLED=0
+  goarch:
+  - 386
+  - amd64
+  - arm
+  - arm64
+  goos:
+  - linux
+  - windows
+  - osx
+
+archives:
+- replacements:
+    darwin: Darwin
+    linux: Linux
+    windows: Windows
+    386: i386
+    amd64: x86_64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
