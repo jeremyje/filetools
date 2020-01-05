@@ -29,6 +29,7 @@ coverage.txt
 *.pem
 *.backup
 
+cmd/cleanup/cleanup
 cmd/similar/similar
 cmd/unique/unique
 

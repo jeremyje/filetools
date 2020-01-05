@@ -1,4 +1,4 @@
-// Copyright 2019 Jeremy Edwards
+// Copyright 2020 Jeremy Edwards
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,27 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package main finds similarly named files in a directory structure.
-package main
+package internal
 
 import (
 	"flag"
-	"github.com/jeremyje/filetools/internal"
+	"log"
+	"net/http"
 )
 
 var (
-	pathFlag       = flag.String("path", "", "Comma separated list of directory paths to scan for similar files.")
-	clearTokenFlag = flag.String("clear", "", "Clear tokens")
+	pprofFlag = flag.String("pprof", "", "HTTP serving address for pprof metrics.")
 )
 
-func main() {
-	internal.Initialize()
-	internal.Similar(fromFlags())
-}
-
-func fromFlags() *internal.SimilarParams {
-	return &internal.SimilarParams{
-		Paths:       internal.StringList(pathFlag),
-		ClearTokens: internal.StringList(clearTokenFlag),
-	}
+// Initialize sets up the standard environment for an application.
+func Initialize() {
+	flag.Parse()
+	go func() {
+		if *pprofFlag != "" {
+			log.Println(http.ListenAndServe(*pprofFlag, nil))
+		}
+	}()
 }

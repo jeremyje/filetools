@@ -23,6 +23,18 @@ import (
 	"sync/atomic"
 )
 
+func absPaths(paths []string) ([]string, error) {
+	absPaths := []string{}
+	for _, path := range paths {
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return []string{}, err
+		}
+		absPaths = append(absPaths, absPath)
+	}
+	return absPaths, nil
+}
+
 func fromSlashList(items []string) []string {
 	nitems := []string{}
 	for _, item := range items {

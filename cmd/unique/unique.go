@@ -17,10 +17,8 @@ package main
 
 import (
 	"flag"
-	"log"
 	"time"
 
-	"net/http"
 	_ "net/http/pprof"
 
 	"github.com/jeremyje/filetools/internal"
@@ -37,17 +35,11 @@ var (
 	hashFlag            = flag.String("hash", "crc64", "Hash algorithm to use to compare similar files.")
 	coarseHashFlag      = flag.Bool("coarse_hash", true, "Enables a preliminary hashing method to quickly split up obviously different files.")
 	statusFrequencyFlag = flag.Duration("status_frequency", time.Second*5, "Frequency for updating status")
-	pprofFlag           = flag.String("pprof", "", "HTTP serving address for pprof metrics.")
 	filePprofFlag       = flag.Bool("file_pprof", true, "Write Pprof data out per stage to a file.")
 )
 
 func main() {
-	flag.Parse()
-	go func() {
-		if *pprofFlag != "" {
-			log.Println(http.ListenAndServe(*pprofFlag, nil))
-		}
-	}()
+	internal.Initialize()
 	internal.Check(internal.Unique(fromFlags()))
 }
 

@@ -21,7 +21,10 @@ else
 	DOT_EXE =
 endif
 
-all: cmd/unique/unique$(DOT_EXE) cmd/similar/similar$(DOT_EXE)
+all: cmd/cleanup/cleanup$(DOT_EXE) cmd/similar/similar$(DOT_EXE) cmd/unique/unique$(DOT_EXE)
+
+cmd/cleanup/cleanup$(DOT_EXE):
+	$(GO_BUILD) -o cmd/cleanup/cleanup$(DOT_EXE) cmd/cleanup/cleanup.go
 
 cmd/similar/similar$(DOT_EXE):
 	$(GO_BUILD) -o cmd/similar/similar$(DOT_EXE) cmd/similar/similar.go
@@ -51,6 +54,7 @@ check: lint test bench
 
 clean:
 	rm -f coverage.txt
+	rm -f cmd/cleanup/cleanup$(DOT_EXE)
 	rm -f cmd/similar/similar$(DOT_EXE)
 	rm -f cmd/unique/unique$(DOT_EXE)
 
