@@ -16,10 +16,11 @@ package internal
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMultiWalk(t *testing.T) {
@@ -34,14 +35,24 @@ func TestMultiWalk(t *testing.T) {
 		{
 			[]string{"."},
 			[]string{
+				"metrics_test.go",
+				"similar_test.go",
+				"unique_test.go",
+				"appmain.go",
+				"cleanup.go",
 				"doc.go",
-				"hash.go", "hash_test.go",
-				"metrics.go", "metrics_test.go",
-				"multiwalk.go", "multiwalk_test.go",
+				"hash_test.go",
+				"hash.go",
+				"metrics.go",
+				"multiwalk_test.go",
+				"multiwalk.go",
+				"perf.go",
 				"report.go",
-				"similar.go", "similar_test.go",
-				"unique.go", "unique_test.go",
-				"util.go", "util_test.go",
+				"report.html",
+				"similar.go",
+				"unique.go",
+				"util_test.go",
+				"util.go",
 			},
 		},
 		{
