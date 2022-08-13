@@ -93,3 +93,27 @@ jobs:
       run: |
         make TAG=head images
         make REGISTRY="ghcr.io/${{ github.actor }}" TAG=head images
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        generate_release_notes: true
+        draft: true
+        prerelease: false
+        files: |
+          LICENSE
+          build/bin/linux_amd64/cleanup
+          build/bin/linux_amd64/similar
+          build/bin/linux_amd64/unique
+          build/bin/windows_amd64/cleanup.exe
+          build/bin/windows_amd64/similar.exe
+          build/bin/windows_amd64/unique.exe
+
+    - name: Publish Application
+      uses: actions/upload-artifact@v3
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        name: release.tar.gz
+        path: |
+          build/bin/*
