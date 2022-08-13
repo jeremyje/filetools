@@ -16,12 +16,18 @@
 package metadata
 
 import (
+	"fmt"
 	"mime"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/dhowden/tag"
 	pb "github.com/jeremyje/filetools/internal/metadata/proto"
+	"github.com/pillash/mp4util"
+	tajtiattila "github.com/tajtiattila/metadata"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -35,8 +41,54 @@ func StatFromFilepath(path string) (*pb.FileMetadata, error) {
 }
 
 func StatFromFileWalk(path string, info os.FileInfo) (*pb.FileMetadata, error) {
+	fileStat := fileInfoToStatProto(path, info)
+
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defer f.Close()
+	mediaMD := &pb.FileMetadataMedia{}
+
+	tagMD, err := tag.ReadFrom(f)
+	if err == nil {
+		mediaMD.Format = string(tagMD.Format())
+		mediaMD.FileType = string(tagMD.FileType())
+		raws := map[string]string{}
+		for k, v := range tagMD.Raw() {
+			raws[k] = fmt.Sprintf("%v", v)
+		}
+		mediaMD.Raw = raws
+	}
+
+	f.Seek(0, 0)
+
+	if strings.Contains(fileStat.GetMimeType(), "mp4") {
+		seconds, err := mp4util.Duration(path)
+		if err == nil {
+			mediaMD.Duration = durationpb.New(time.Second * time.Duration(seconds))
+		}
+	}
+
+	f.Seek(0, 0)
+
+	tMD, err := tajtiattila.Parse(f)
+	if err == nil {
+		attrs := map[string]string{}
+		for k, v := range tMD.Attr {
+			attrs[k] = v
+		}
+
+		mediaMD.Attributes = attrs
+		mediaMD.Orientation = int32(tMD.Orientation)
+		mediaMD.CreatedTimestamp = timestamppb.New(tMD.DateTimeCreated.Time)
+		mediaMD.OriginalTimestamp = timestamppb.New(tMD.DateTimeOriginal.Time)
+	}
+
 	return &pb.FileMetadata{
-		FileStat: fileInfoToStatProto(path, info),
+		FileStat: fileStat,
+		Media:    mediaMD,
 	}, nil
 }
 
