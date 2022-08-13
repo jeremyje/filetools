@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	pb "github.com/jeremyje/filetools/internal/metadata/proto"
+	"github.com/jeremyje/filetools/testdata"
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
@@ -30,7 +31,7 @@ func TestMetadata(t *testing.T) {
 		want *pb.FileStat
 	}{
 		{
-			path: "testdata/testfile.txt",
+			path: testdata.Get(t, "examples/testfile.txt"),
 			want: &pb.FileStat{
 				Name:          "testfile.txt",
 				Size:          12,
@@ -41,7 +42,7 @@ func TestMetadata(t *testing.T) {
 			},
 		},
 		{
-			path: "testdata/testfile.txt.txt",
+			path: testdata.Get(t, "examples/testfile.txt.txt"),
 			want: &pb.FileStat{
 				Name:          "testfile.txt.txt",
 				Size:          16,
@@ -52,7 +53,7 @@ func TestMetadata(t *testing.T) {
 			},
 		},
 		{
-			path: "testdata/testfile.tar",
+			path: testdata.Get(t, "examples/testfile.tar"),
 			want: &pb.FileStat{
 				Name:          "testfile.tar",
 				Size:          10240,
@@ -63,7 +64,7 @@ func TestMetadata(t *testing.T) {
 			},
 		},
 		{
-			path: "testdata/testfile.tar.gz",
+			path: testdata.Get(t, "examples/testfile.tar.gz"),
 			want: &pb.FileStat{
 				Name:          "testfile.tar.gz",
 				Size:          152,
