@@ -21,16 +21,50 @@ else
 	DOT_EXE =
 endif
 
-all: cmd/cleanup/cleanup$(DOT_EXE) cmd/similar/similar$(DOT_EXE) cmd/unique/unique$(DOT_EXE)
+REGISTRY = docker.io/jeremyje
+CLEANUP_IMAGE = $(REGISTRY)/cleanup
+SIMILAR_IMAGE = $(REGISTRY)/similar
+UNIQUE_IMAGE = $(REGISTRY)/unique
 
-cmd/cleanup/cleanup$(DOT_EXE):
-	$(GO_BUILD) -o cmd/cleanup/cleanup$(DOT_EXE) cmd/cleanup/cleanup.go
 
-cmd/similar/similar$(DOT_EXE):
-	$(GO_BUILD) -o cmd/similar/similar$(DOT_EXE) cmd/similar/similar.go
+ASSETS = 
+NICHE_PLATFORMS = freebsd openbsd netbsd darwin
+LINUX_PLATFORMS = linux_386 linux_amd64 linux_arm_v5 linux_arm_v6 linux_arm_v7 linux_arm64 linux_s390x linux_ppc64le linux_riscv64 linux_mips64le linux_mips linux_mipsle linux_mips64
+LINUX_NICHE_PLATFORMS = 
+WINDOWS_PLATFORMS = windows_386 windows_amd64
+MAIN_PLATFORMS = windows_amd64 linux_amd64 linux_arm64
+ALL_PLATFORMS = $(LINUX_PLATFORMS) $(LINUX_NICHE_PLATFORMS) $(WINDOWS_PLATFORMS) $(foreach niche,$(NICHE_PLATFORMS),$(niche)_amd64 $(niche)_arm64)
+ALL_APPS = cleanup similar unique
 
-cmd/unique/unique$(DOT_EXE):
-	$(GO_BUILD) -o cmd/unique/unique$(DOT_EXE) cmd/unique/unique.go
+MAIN_BINARIES = $(foreach app,$(ALL_APPS),$(foreach platform,$(MAIN_PLATFORMS),build/bin/$(platform)/$(app)$(if $(findstring windows_,$(platform)),.exe,)))
+ALL_BINARIES = $(foreach app,$(ALL_APPS),$(foreach platform,$(ALL_PLATFORMS),build/bin/$(platform)/$(app)$(if $(findstring windows_,$(platform)),.exe,)))
+# https://hub.docker.com/_/microsoft-windows-nanoserver
+WINDOWS_VERSIONS = 1809 20H2 ltsc2022
+BUILDX_BUILDER = buildx-builder
+LINUX_CPU_PLATFORMS = amd64 arm64 ppc64le s390x arm/v5 arm/v6 arm/v7
+
+
+binaries: $(MAIN_BINARIES)
+all: $(ALL_BINARIES)
+
+build/bin/%: $(ASSETS)
+	GOOS=$(firstword $(subst _, ,$(notdir $(abspath $(dir $@))))) GOARCH=$(word 2, $(subst _, ,$(notdir $(abspath $(dir $@))))) GOARM=$(subst v,,$(word 3, $(subst _, ,$(notdir $(abspath $(dir $@)))))) CGO_ENABLED=0 $(GO) build -o $@ cmd/$(basename $(notdir $@))/$(basename $(notdir $@)).go
+	touch $@
+
+ALL_LINUX_IMAGES = $(foreach app,$(ALL_APPS),$(foreach platform,$(LINUX_PLATFORMS),linux-image-$(app)-$(platform)))
+linux-images: $(ALL_LINUX_IMAGES)
+
+linux-image-cleanup-%: build/bin/%/cleanup ensure-builder
+	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform $(subst _,/,$*) --build-arg BINARY_PATH=$< -f cmd/cleanup/Dockerfile -t $(CLEANUP_IMAGE):$(TAG)-$* . $(DOCKER_PUSH)
+
+ALL_WINDOWS_IMAGES = $(foreach app,$(ALL_APPS),$(foreach winver,$(WINDOWS_VERSIONS),windows-image-$(app)-$(winver)))
+windows-images: $(ALL_WINDOWS_IMAGES)
+
+windows-image-cleanup-%: build/bin/windows_amd64/cleanup.exe ensure-builder
+	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform windows/amd64 -f cmd/cleanup/Dockerfile.windows --build-arg WINDOWS_VERSION=$* -t $(CLEANUP_IMAGE):$(TAG)-windows_amd64-$* . $(DOCKER_PUSH)
+
+ensure-builder:
+	-$(DOCKER) buildx create --name $(BUILDX_BUILDER)
 
 deps:
 	$(GO) mod download

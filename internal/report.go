@@ -15,48 +15,24 @@
 package internal
 
 import (
-	"github.com/pkg/errors"
+	_ "embed"
 	"io"
 	"os"
 	"text/template"
+
+	"github.com/pkg/errors"
 )
 
-const fileOpenOverwrite = os.O_RDWR | os.O_CREATE
-const fileOpenDontOverwrite = fileOpenOverwrite | os.O_EXCL
-const defaultPermissions = 0755
+var (
+	//go:embed report.html
+	duplicateFileReportTemplate string
+)
 
-const duplicateFileReportTemplate = `<!DOCTYPE html>
-<html>
-	<head>
-		<meta charset="UTF-8">
-		<title>{{.Title}}</title>
-		<style>
-		body {
-			font-family: Arial;
-			font-size: 12px;
-		}
-		pre {
-			font-family: Consolas, monospace;
-			font-size: 12px;
-		}
-		table {
-			table-layout: fixed;
-		}
-		.odd {
-			background: #DDDDDD;
-		}
-		</style>
-	</head>
-	<body>
-		<table>
-		{{ range $fileSize, $duplicateFileSet := .Duplicates -}}
-		{{- range $duplicateFileSet.Names -}}
-		<tr><td>{{ $duplicateFileSet.Size }}</td><td>{{ . }}</td></tr>
-		{{ end }}
-		{{- end -}}
-		</table>
-	</body>
-</html>`
+const (
+	fileOpenOverwrite     = os.O_RDWR | os.O_CREATE
+	fileOpenDontOverwrite = fileOpenOverwrite | os.O_EXCL
+	defaultPermissions    = 0755
+)
 
 // FileTable is a table of files
 type FileTable struct {

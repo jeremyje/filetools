@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>{{.Title}}</title>
+		<style>
+		body {
+			font-family: Arial;
+			font-size: 12px;
+		}
+		pre {
+			font-family: Consolas, monospace;
+			font-size: 12px;
+		}
+		table {
+			table-layout: fixed;
+		}
+		.odd {
+			background: #DDDDDD;
+		}
+		</style>
+	</head>
+	<body>
+		<table>
+		{{ range $fileSize, $duplicateFileSet := .Duplicates -}}
+		{{- range $duplicateFileSet.Names -}}
+		<tr><td>{{ $duplicateFileSet.Size }}</td><td>{{ . }}</td></tr>
+		{{ end }}
+		{{- end -}}
+		</table>
+	</body>
+</html>

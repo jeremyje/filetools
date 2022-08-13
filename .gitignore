@@ -37,3 +37,5 @@ output.html
 
 dist/
 testdata/autogen/
+.vscode/
+build/
