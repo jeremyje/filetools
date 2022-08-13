@@ -17,6 +17,7 @@ syntax = "proto3";
 package filetools.internal.metadata.proto;
 option go_package = "github.com/jeremyje/filetools/internal/metadata/proto";
 
+import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 
 // Stat is the OS level file stat.
@@ -39,7 +40,17 @@ message FileStat {
 }
 
 message FileMetadataMedia {
+  map<string, string> attributes = 1;
+  int32 orientation = 2;
+  google.protobuf.Timestamp created_timestamp = 3;
+  google.protobuf.Timestamp original_timestamp = 4;
 
+  string format = 5;
+  string file_type = 6;
+  string title = 7;
+  string comment = 8;
+  map<string, string> raw = 9;
+  google.protobuf.Duration duration = 10;
 }
 
 message FileMetadata {

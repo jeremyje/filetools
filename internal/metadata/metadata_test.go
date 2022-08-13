@@ -18,12 +18,124 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	pb "github.com/jeremyje/filetools/internal/metadata/proto"
 	"github.com/jeremyje/filetools/testdata"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
+
+func TestMetadataMedia(t *testing.T) {
+	var testCases = []struct {
+		path string
+		want *pb.FileMetadataMedia
+	}{
+		{
+			path: testdata.Get(t, "examples/file_example_favicon.ico"),
+			want: &pb.FileMetadataMedia{
+				Attributes: map[string]string{},
+			},
+		},
+		{
+			path: testdata.Get(t, "examples/file_example_GIF_500kB.gif"),
+			want: &pb.FileMetadataMedia{
+				Attributes: map[string]string{},
+			},
+		},
+		{
+			path: testdata.Get(t, "examples/file_example_JPG_100kB.jpg"),
+			want: &pb.FileMetadataMedia{
+				Attributes: map[string]string{},
+			},
+		},
+		{
+			path: testdata.Get(t, "examples/file_example_MP4_480_1_5MG.mp4"),
+			want: &pb.FileMetadataMedia{
+				Attributes: map[string]string{
+					"DateTimeCreated": "2015-08-07T09:13:02Z",
+				},
+				Format:   "MP4",
+				Duration: durationpb.New(time.Second * time.Duration(30)),
+			},
+		},
+		{
+			path: testdata.Get(t, "examples/file_example_PNG_500kB.png"),
+			want: &pb.FileMetadataMedia{
+				Attributes: map[string]string{},
+			},
+		},
+		{
+			path: testdata.Get(t, "examples/file_example_TIFF_1MB.tiff"),
+			want: &pb.FileMetadataMedia{
+				Attributes: map[string]string{},
+			},
+		},
+		{
+			path: testdata.Get(t, "examples/file_example_WEBP_50kB.webp"),
+			want: &pb.FileMetadataMedia{
+				Attributes: map[string]string{},
+			},
+		},
+		{
+			path: testdata.Get(t, "examples/file_example_MP3_700KB.mp3"),
+			want: &pb.FileMetadataMedia{
+				Attributes: map[string]string{},
+				FileType:   "MP3",
+				Format:     "ID3v2.3",
+				Raw: map[string]string{
+					"TALB": "YouTube Audio Library",
+					"TCON": "Cinematic",
+					"TIT2": "Impact Moderato",
+					"TPE1": "Kevin MacLeod",
+				},
+			},
+		},
+		{
+			path: testdata.Get(t, "examples/file_example_OOG_1MG.ogg"),
+			want: &pb.FileMetadataMedia{
+				Attributes: map[string]string{},
+				FileType:   "OGG",
+				Format:     "VORBIS",
+				Raw: map[string]string{
+					"album":  "YouTube Audio Library",
+					"artist": "Kevin MacLeod",
+					"genre":  "Cinematic",
+					"title":  "Impact Moderato",
+					"vendor": "Xiph.Org libVorbis I 20120203 (Omnipresent)",
+				},
+			},
+		},
+		{
+			path: testdata.Get(t, "examples/file_example_SVG_20kB.svg"),
+			want: &pb.FileMetadataMedia{
+				Attributes: map[string]string{},
+			},
+		},
+		{
+			path: testdata.Get(t, "examples/file_example_WAV_1MG.wav"),
+			want: &pb.FileMetadataMedia{
+				Attributes: map[string]string{},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.path, func(t *testing.T) {
+			t.Parallel()
+			got, err := StatFromFilepath(tc.path)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if diff := cmp.Diff(tc.want, got.GetMedia(), protocmp.Transform(), protocmp.IgnoreFields(tc.want, "created_timestamp", "original_timestamp")); diff != "" {
+				t.Errorf("Get mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
 
 func TestMetadata(t *testing.T) {
 	var testCases = []struct {
