@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/dustin/go-humanize v1.0.0
-	github.com/google/go-cmp v0.5.5
+	github.com/google/go-cmp v0.5.8
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.0
 	google.golang.org/protobuf v1.28.1
