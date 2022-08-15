@@ -28,9 +28,10 @@ export PATH := $(PWD)/build/toolchain/bin:$(PATH):/root/go/bin:/usr/local/go/bin
 
 REGISTRY = docker.io/jeremyje
 CLEANUP_IMAGE = $(REGISTRY)/cleanup
+RMLIST_IMAGE = $(REGISTRY)/rmlist
 SIMILAR_IMAGE = $(REGISTRY)/similar
 UNIQUE_IMAGE = $(REGISTRY)/unique
-ALL_IMAGES = $(CLEANUP_IMAGE) $(SIMILAR_IMAGE) $(UNIQUE_IMAGE)
+ALL_IMAGES = $(CLEANUP_IMAGE) $(RMLIST_IMAGE) $(SIMILAR_IMAGE) $(UNIQUE_IMAGE)
 
 PROTOS = internal/metadata/proto/metadata.pb.go
 
@@ -41,7 +42,7 @@ LINUX_NICHE_PLATFORMS =
 WINDOWS_PLATFORMS = windows_386 windows_amd64
 MAIN_PLATFORMS = windows_amd64 linux_amd64 linux_arm64
 ALL_PLATFORMS = $(LINUX_PLATFORMS) $(LINUX_NICHE_PLATFORMS) $(WINDOWS_PLATFORMS) $(foreach niche,$(NICHE_PLATFORMS),$(niche)_amd64 $(niche)_arm64)
-ALL_APPS = cleanup similar unique
+ALL_APPS = cleanup rmlist similar unique
 
 MAIN_BINARIES = $(foreach app,$(ALL_APPS),$(foreach platform,$(MAIN_PLATFORMS),build/bin/$(platform)/$(app)$(if $(findstring windows_,$(platform)),.exe,)))
 ALL_BINARIES = $(foreach app,$(ALL_APPS),$(foreach platform,$(ALL_PLATFORMS),build/bin/$(platform)/$(app)$(if $(findstring windows_,$(platform)),.exe,)))
@@ -63,6 +64,7 @@ build/bin/%: $(ASSETS)
 images: DOCKER_PUSH = --push
 images: linux-images windows-images
 	-$(DOCKER) manifest rm $(CLEANUP_IMAGE):$(TAG)
+	-$(DOCKER) manifest rm $(RMLIST_IMAGE):$(TAG)
 	-$(DOCKER) manifest rm $(SIMILAR_IMAGE):$(TAG)
 	-$(DOCKER) manifest rm $(UNIQUE_IMAGE):$(TAG)
 
@@ -84,6 +86,9 @@ linux-images: $(ALL_LINUX_IMAGES)
 linux-image-cleanup-%: build/bin/%/cleanup ensure-builder
 	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform $(subst _,/,$*) --build-arg BINARY_PATH=$< -f cmd/cleanup/Dockerfile -t $(CLEANUP_IMAGE):$(TAG)-$* . $(DOCKER_PUSH)
 
+linux-image-rmlist-%: build/bin/%/rmlist ensure-builder
+	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform $(subst _,/,$*) --build-arg BINARY_PATH=$< -f cmd/rmlist/Dockerfile -t $(RMLIST_IMAGE):$(TAG)-$* . $(DOCKER_PUSH)
+
 linux-image-similar-%: build/bin/%/similar ensure-builder
 	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform $(subst _,/,$*) --build-arg BINARY_PATH=$< -f cmd/similar/Dockerfile -t $(SIMILAR_IMAGE):$(TAG)-$* . $(DOCKER_PUSH)
 
@@ -95,6 +100,9 @@ windows-images: $(ALL_WINDOWS_IMAGES)
 
 windows-image-cleanup-%: build/bin/windows_amd64/cleanup.exe ensure-builder
 	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform windows/amd64 -f cmd/cleanup/Dockerfile.windows --build-arg WINDOWS_VERSION=$* -t $(CLEANUP_IMAGE):$(TAG)-windows_amd64-$* . $(DOCKER_PUSH)
+
+windows-image-rmlist-%: build/bin/windows_amd64/rmlist.exe ensure-builder
+	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform windows/amd64 -f cmd/rmlist/Dockerfile.windows --build-arg WINDOWS_VERSION=$* -t $(RMLIST_IMAGE):$(TAG)-windows_amd64-$* . $(DOCKER_PUSH)
 
 windows-image-similar-%: build/bin/windows_amd64/similar.exe ensure-builder
 	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform windows/amd64 -f cmd/similar/Dockerfile.windows --build-arg WINDOWS_VERSION=$* -t $(SIMILAR_IMAGE):$(TAG)-windows_amd64-$* . $(DOCKER_PUSH)
