@@ -27,6 +27,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/jeremyje/filetools/internal/localfs"
 	"github.com/jeremyje/filetools/testdata"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -83,7 +84,7 @@ func mustFileOfLength(size int64) string {
 	if err != nil {
 		panic(err)
 	}
-	if fileExists(filename) {
+	if localfs.FileExists(filename) {
 		return filename
 	}
 	f, err := os.Create(filename)

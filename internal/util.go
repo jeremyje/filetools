@@ -16,13 +16,14 @@ package internal
 
 import (
 	"fmt"
-	"github.com/dustin/go-humanize"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
+
+	"github.com/dustin/go-humanize"
 )
 
+// Deprecated use localfs.DirList instead.
 func absPaths(paths []string) ([]string, error) {
 	absPaths := []string{}
 	for _, path := range paths {
@@ -75,22 +76,6 @@ func StringList(flagValue *string) []string {
 		return []string{}
 	}
 	return uniqueAndNonEmpty(strings.SplitN(*flagValue, ",", -1))
-}
-
-func fileExists(path string) bool {
-	info, err := os.Stat(path)
-	if err != nil {
-		return false
-	}
-	return !info.IsDir()
-}
-
-func dirExists(path string) bool {
-	info, err := os.Stat(path)
-	if err != nil {
-		return false
-	}
-	return info.IsDir()
 }
 
 // Check reports errors to stdout.

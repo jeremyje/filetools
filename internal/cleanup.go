@@ -15,7 +15,6 @@
 package internal
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -47,7 +46,7 @@ func Cleanup(params *CleanupParams) error {
 
 func purgeEmptyDirectory(path string, dryRun bool) (bool, error) {
 	var lastErr error
-	items, err := ioutil.ReadDir(path)
+	items, err := os.ReadDir(path)
 	if err != nil {
 		return false, errors.Wrapf(err, "cannot read '%s'", path)
 	}
