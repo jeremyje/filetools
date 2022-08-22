@@ -132,14 +132,6 @@ func (us *uniqueStatus) detail(d string) {
 	}
 }
 
-type sizeBucketedFiles struct {
-	files map[int64]*sameSizeFileSet
-}
-
-type sameSizeFileSet struct {
-	fileData []*fileData
-}
-
 type fileData struct {
 	name       string
 	coarseHash string

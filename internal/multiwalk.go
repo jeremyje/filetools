@@ -16,10 +16,12 @@ package internal
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/jeremyje/filetools/internal/localfs"
+	"github.com/pkg/errors"
 )
 
 type shardableWalkFunction interface {
@@ -44,7 +46,7 @@ func shardedMultiwalk(paths []string, sharded shardableWalkFunction) error {
 		return nil
 	}
 	for _, path := range paths {
-		if !dirExists(path) {
+		if !localfs.DirExists(path) {
 			return errors.Errorf("%s is not a directory", path)
 		}
 	}
