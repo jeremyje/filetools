@@ -1,4 +1,4 @@
-// Copyright 2019 Jeremy Edwards
+// Copyright 2022 Jeremy Edwards
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package internal
+package localfs
 
 import (
 	"fmt"
@@ -20,11 +20,10 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/jeremyje/filetools/internal/localfs"
 	"github.com/pkg/errors"
 )
 
-type shardableWalkFunction interface {
+type ShardedWalkFn interface {
 	NewWalkShard() func(string, os.FileInfo, error) error
 }
 
@@ -40,13 +39,16 @@ func filesOnly(f func(string, os.FileInfo, error) error) func(string, os.FileInf
 	}
 }
 
-func shardedMultiwalk(paths []string, sharded shardableWalkFunction) error {
-	paths = uniqueAndNonEmpty(paths)
+func ConcurrentWalk(paths []string, walkFn ShardedWalkFn) error {
+	paths, err := DirList(paths)
+	if err != nil {
+		return err
+	}
 	if len(paths) == 0 {
 		return nil
 	}
 	for _, path := range paths {
-		if !localfs.DirExists(path) {
+		if !DirExists(path) {
 			return errors.Errorf("%s is not a directory", path)
 		}
 	}
@@ -61,7 +63,7 @@ func shardedMultiwalk(paths []string, sharded shardableWalkFunction) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			f := filesOnly(sharded.NewWalkShard())
+			f := filesOnly(walkFn.NewWalkShard())
 			walkErr := filepath.Walk(path, f)
 			if walkErr != nil {
 				select {
@@ -82,8 +84,11 @@ func shardedMultiwalk(paths []string, sharded shardableWalkFunction) error {
 	}
 }
 
-func multiwalk(paths []string, f func(string, os.FileInfo, error) error) error {
-	paths = uniqueAndNonEmpty(paths)
+func Walk(paths []string, f func(string, os.FileInfo, error) error) error {
+	paths, err := DirList(paths)
+	if err != nil {
+		return err
+	}
 	if len(paths) == 0 {
 		return nil
 	}

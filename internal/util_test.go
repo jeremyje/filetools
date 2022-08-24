@@ -16,9 +16,10 @@ package internal
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestUniqueAndNonEmpty(t *testing.T) {

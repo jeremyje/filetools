@@ -16,45 +16,11 @@ package internal
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 	"sync/atomic"
 
 	"github.com/dustin/go-humanize"
 )
-
-// Deprecated use localfs.DirList instead.
-func absPaths(paths []string) ([]string, error) {
-	absPaths := []string{}
-	for _, path := range paths {
-		absPath, err := filepath.Abs(path)
-		if err != nil {
-			return []string{}, err
-		}
-		absPaths = append(absPaths, absPath)
-	}
-	return absPaths, nil
-}
-
-func fromSlashList(items []string) []string {
-	nitems := []string{}
-	for _, item := range items {
-		nitems = append(nitems, filepath.FromSlash(item))
-	}
-	return nitems
-}
-
-func fromSlashMap(m map[string][]string) map[string][]string {
-	nm := map[string][]string{}
-	for k, v := range m {
-		nv := []string{}
-		for _, vitem := range v {
-			nv = append(nv, filepath.FromSlash(vitem))
-		}
-		nm[filepath.FromSlash(k)] = nv
-	}
-	return nm
-}
 
 func uniqueAndNonEmpty(items []string) []string {
 	m := map[string]interface{}{}

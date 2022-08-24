@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/jeremyje/filetools/internal/localfs"
 )
 
 var (
@@ -52,7 +54,7 @@ func report(matches map[string][]string) {
 func findSimilarFiles(p *SimilarParams) map[string][]string {
 	clearTokens := p.ClearTokens
 	fileTable := make(map[string][]string)
-	err := multiwalk(p.Paths, func(path string, info os.FileInfo, err error) error {
+	err := localfs.Walk(p.Paths, func(path string, info os.FileInfo, err error) error {
 		if err == nil {
 			normName := normalize(path, clearTokens)
 			arr, ok := fileTable[normName]
