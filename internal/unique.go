@@ -24,6 +24,7 @@ import (
 	"time"
 
 	//"github.com/gosuri/uilive"
+	"github.com/jeremyje/filetools/internal/htmltemplate"
 	"github.com/jeremyje/filetools/internal/localfs"
 	"github.com/pkg/errors"
 )
@@ -529,5 +530,5 @@ func reportDeplicates(p *UniqueParams, report *DuplicateFileReport) error {
 		defer f.Close()
 		w = f
 	}
-	return writeReport(w, duplicateFileReportTemplate, report)
+	return htmltemplate.Write(w, htmltemplate.DuplicateFileReportTemplate, report)
 }

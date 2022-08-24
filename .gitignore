@@ -39,3 +39,6 @@ dist/
 testdata/autogen/
 .vscode/
 build/
+
+*.cert
+*.key
