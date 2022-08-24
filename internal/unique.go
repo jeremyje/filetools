@@ -24,6 +24,7 @@ import (
 	"time"
 
 	//"github.com/gosuri/uilive"
+	"github.com/jeremyje/filetools/internal/localfs"
 	"github.com/pkg/errors"
 )
 
@@ -486,7 +487,7 @@ func uniqueScan(p *UniqueParams) (*uniqueContext, error) {
 	defer uc.Close()
 
 	uc.status.set("Scan Files")
-	err := shardedMultiwalk(p.Paths, uc)
+	err := localfs.ConcurrentWalk(p.Paths, uc)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot scan files for uniqueness")
 	}

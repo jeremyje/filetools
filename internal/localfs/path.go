@@ -1,4 +1,4 @@
-// Copyright 2019 Jeremy Edwards
+// Copyright 2022 Jeremy Edwards
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -84,11 +84,36 @@ func explodePath(path string) []string {
 func absPaths(paths []string) ([]string, error) {
 	absPaths := []string{}
 	for _, path := range paths {
-		absPath, err := filepath.Abs(path)
-		if err != nil {
-			return []string{}, err
+		if path != "" {
+			absPath, err := filepath.Abs(path)
+			if err != nil {
+				return []string{}, err
+			}
+			absPaths = append(absPaths, absPath)
 		}
-		absPaths = append(absPaths, absPath)
 	}
 	return absPaths, nil
+}
+
+// FromSlashList replaces slashes with the path separator for items in the list.
+func FromSlashList(items []string) []string {
+	nitems := []string{}
+	for _, item := range items {
+		nitems = append(nitems, filepath.FromSlash(item))
+	}
+	sort.Strings(nitems)
+	return nitems
+}
+
+// FromSlashMap replaces slashes with the path separator for items in the map.
+func FromSlashMap(m map[string][]string) map[string][]string {
+	nm := map[string][]string{}
+	for k, v := range m {
+		nv := []string{}
+		for _, vitem := range v {
+			nv = append(nv, filepath.FromSlash(vitem))
+		}
+		nm[filepath.FromSlash(k)] = nv
+	}
+	return nm
 }

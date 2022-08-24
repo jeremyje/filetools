@@ -16,8 +16,11 @@ package internal
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/jeremyje/filetools/internal/localfs"
+	"github.com/jeremyje/filetools/testdata"
 )
 
 func TestNormalize(t *testing.T) {
@@ -64,54 +67,54 @@ func TestFindSimilarFiles(t *testing.T) {
 		},
 		{
 			"A, B Match", &SimilarParams{
-				Paths:       []string{"../testdata/similar/by_extension"},
+				Paths:       []string{testdata.Get(t, "similar/by_extension")},
 				ClearTokens: []string{""},
 			},
 			map[string][]string{
-				"a": {"../testdata/similar/by_extension/a.1", "../testdata/similar/by_extension/a.2"},
-				"b": {"../testdata/similar/by_extension/b.1", "../testdata/similar/by_extension/b.2"},
+				"a": {testdata.Get(t, "similar/by_extension/a.1"), testdata.Get(t, "similar/by_extension/a.2")},
+				"b": {testdata.Get(t, "similar/by_extension/b.1"), testdata.Get(t, "similar/by_extension/b.2")},
 			},
 		},
 		{
 			"A, B Match (all directories)", &SimilarParams{
-				Paths:       []string{"../testdata/similar"},
+				Paths:       []string{testdata.Get(t, "similar")},
 				ClearTokens: []string{""},
 			},
 			map[string][]string{
-				"a": {"../testdata/similar/by_extension/a.1", "../testdata/similar/by_extension/a.2"},
-				"b": {"../testdata/similar/by_extension/b.1", "../testdata/similar/by_extension/b.2"},
+				"a": {testdata.Get(t, "similar/by_extension/a.1"), testdata.Get(t, "similar/by_extension/a.2")},
+				"b": {testdata.Get(t, "similar/by_extension/b.1"), testdata.Get(t, "similar/by_extension/b.2")},
 			},
 		},
 		{
 			"Similar Files no match wrong tokens", &SimilarParams{
-				Paths:       []string{"../testdata/similar/close"},
+				Paths:       []string{testdata.Get(t, "similar/close")},
 				ClearTokens: []string{"txt", "pdf"},
 			},
 			map[string][]string{},
 		},
 		{
 			"Similar Files Match by tokens", &SimilarParams{
-				Paths:       []string{"../testdata/similar/close"},
+				Paths:       []string{testdata.Get(t, "similar/close")},
 				ClearTokens: []string{"m", "h"},
 			},
 			map[string][]string{
-				"ouse": {"../testdata/similar/close/house.txt", "../testdata/similar/close/mouse.pdf"},
+				"ouse": {testdata.Get(t, "similar/close/house.txt"), testdata.Get(t, "similar/close/mouse.pdf")},
 			},
 		},
 		{
 			"Similar Match (all directories)", &SimilarParams{
-				Paths:       []string{"../testdata/similar"},
+				Paths:       []string{testdata.Get(t, "similar")},
 				ClearTokens: []string{"m", "h"},
 			},
 			map[string][]string{
-				"a":    {"../testdata/similar/by_extension/a.1", "../testdata/similar/by_extension/a.2"},
-				"b":    {"../testdata/similar/by_extension/b.1", "../testdata/similar/by_extension/b.2"},
-				"ouse": {"../testdata/similar/close/house.txt", "../testdata/similar/close/mouse.pdf"},
+				"a":    {testdata.Get(t, "similar/by_extension/a.1"), testdata.Get(t, "similar/by_extension/a.2")},
+				"b":    {testdata.Get(t, "similar/by_extension/b.1"), testdata.Get(t, "similar/by_extension/b.2")},
+				"ouse": {testdata.Get(t, "similar/close/house.txt"), testdata.Get(t, "similar/close/mouse.pdf")},
 			},
 		},
 		{
 			"Tokens Don't Match Anything", &SimilarParams{
-				Paths:       []string{"../testdata/similar/notsimilar"},
+				Paths:       []string{testdata.Get(t, "similar/notsimilar")},
 				ClearTokens: []string{"$", "#", "one"},
 			},
 			map[string][]string{},
@@ -120,12 +123,17 @@ func TestFindSimilarFiles(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(fmt.Sprintf("%s findSimilarFiles(%+v)", tc.name, tc.params), func(t *testing.T) {
-			assert := assert.New(t)
 			similarMap := findSimilarFiles(tc.params)
 			if len(tc.matches) == 0 {
-				assert.Empty(similarMap)
+				if len(similarMap) != 0 {
+					t.Errorf("want %+v to be empty", similarMap)
+				}
 			} else {
-				assert.Equal(fromSlashMap(tc.matches), fromSlashMap(similarMap))
+				want := localfs.FromSlashMap(tc.matches)
+				got := localfs.FromSlashMap(similarMap)
+				if diff := cmp.Diff(want, got); diff != "" {
+					t.Errorf("Get mismatch (-want +got):\n%s", diff)
+				}
 			}
 		})
 	}

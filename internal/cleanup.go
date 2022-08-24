@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/jeremyje/filetools/internal/localfs"
 	"github.com/pkg/errors"
 )
 
@@ -31,7 +32,7 @@ type CleanupParams struct {
 // Cleanup cleans up a directory structure.
 func Cleanup(params *CleanupParams) error {
 	var lastErr error
-	paths, err := absPaths(params.Paths)
+	paths, err := localfs.DirList(params.Paths)
 	if err != nil {
 		return err
 	}
