@@ -16,16 +16,7 @@ package internal
 
 import (
 	_ "embed"
-	"io"
 	"os"
-	"text/template"
-
-	"github.com/pkg/errors"
-)
-
-var (
-	//go:embed report.html
-	duplicateFileReportTemplate string
 )
 
 const (
@@ -53,15 +44,4 @@ func openFileForWrite(filename string, overwrite bool) (*os.File, error) {
 		openArgs = fileOpenOverwrite
 	}
 	return os.OpenFile(filename, openArgs, defaultPermissions)
-}
-
-func writeReport(w io.Writer, templateText string, arg interface{}) error {
-	t, err := template.New("report").Funcs(template.FuncMap{
-		"sizeString": sizeString,
-		"oddEven":    newEvenOdd().next,
-	}).Parse(templateText)
-	if err != nil {
-		return errors.Wrap(err, "cannot parse HTML template")
-	}
-	return t.Execute(w, arg)
 }
