@@ -54,7 +54,7 @@ func simplifyPaths(paths []string) []string {
 	for _, p := range sortedPaths {
 
 		match := false
-		subPaths := explodePath(p)
+		subPaths := ExplodePath(p)
 		for _, sp := range subPaths {
 			if sp == prev {
 				match = true
@@ -69,7 +69,7 @@ func simplifyPaths(paths []string) []string {
 	return v
 }
 
-func explodePath(path string) []string {
+func ExplodePath(path string) []string {
 	dirs := []string{path}
 
 	parentPath := filepath.Dir(path)

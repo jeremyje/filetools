@@ -30,8 +30,9 @@ REGISTRY = docker.io/jeremyje
 CLEANUP_IMAGE = $(REGISTRY)/cleanup
 RMLIST_IMAGE = $(REGISTRY)/rmlist
 SIMILAR_IMAGE = $(REGISTRY)/similar
+TREEMAP_IMAGE = $(REGISTRY)/treemap
 UNIQUE_IMAGE = $(REGISTRY)/unique
-ALL_IMAGES = $(CLEANUP_IMAGE) $(RMLIST_IMAGE) $(SIMILAR_IMAGE) $(UNIQUE_IMAGE)
+ALL_IMAGES = $(CLEANUP_IMAGE) $(RMLIST_IMAGE) $(SIMILAR_IMAGE) $(TREEMAP_IMAGE) $(UNIQUE_IMAGE)
 
 PROTOS = internal/metadata/proto/metadata.pb.go
 
@@ -42,7 +43,7 @@ LINUX_NICHE_PLATFORMS =
 WINDOWS_PLATFORMS = windows_386 windows_amd64
 MAIN_PLATFORMS = windows_amd64 linux_amd64 linux_arm64
 ALL_PLATFORMS = $(LINUX_PLATFORMS) $(LINUX_NICHE_PLATFORMS) $(WINDOWS_PLATFORMS) $(foreach niche,$(NICHE_PLATFORMS),$(niche)_amd64 $(niche)_arm64)
-ALL_APPS = cleanup rmlist similar unique
+ALL_APPS = cleanup rmlist similar treemap unique
 
 MAIN_BINARIES = $(foreach app,$(ALL_APPS),$(foreach platform,$(MAIN_PLATFORMS),build/bin/$(platform)/$(app)$(if $(findstring windows_,$(platform)),.exe,)))
 ALL_BINARIES = $(foreach app,$(ALL_APPS),$(foreach platform,$(ALL_PLATFORMS),build/bin/$(platform)/$(app)$(if $(findstring windows_,$(platform)),.exe,)))
@@ -66,6 +67,7 @@ images: linux-images windows-images
 	-$(DOCKER) manifest rm $(CLEANUP_IMAGE):$(TAG)
 	-$(DOCKER) manifest rm $(RMLIST_IMAGE):$(TAG)
 	-$(DOCKER) manifest rm $(SIMILAR_IMAGE):$(TAG)
+	-$(DOCKER) manifest rm $(TREEMAP_IMAGE):$(TAG)
 	-$(DOCKER) manifest rm $(UNIQUE_IMAGE):$(TAG)
 
 	for image in $(ALL_IMAGES) ; do \
@@ -92,6 +94,9 @@ linux-image-rmlist-%: build/bin/%/rmlist ensure-builder
 linux-image-similar-%: build/bin/%/similar ensure-builder
 	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform $(subst _,/,$*) --build-arg BINARY_PATH=$< -f cmd/similar/Dockerfile -t $(SIMILAR_IMAGE):$(TAG)-$* . $(DOCKER_PUSH)
 
+linux-image-treemap-%: build/bin/%/treemap ensure-builder
+	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform $(subst _,/,$*) --build-arg BINARY_PATH=$< -f cmd/treemap/Dockerfile -t $(TREEMAP_IMAGE):$(TAG)-$* . $(DOCKER_PUSH)
+
 linux-image-unique-%: build/bin/%/unique ensure-builder
 	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform $(subst _,/,$*) --build-arg BINARY_PATH=$< -f cmd/unique/Dockerfile -t $(UNIQUE_IMAGE):$(TAG)-$* . $(DOCKER_PUSH)
 
@@ -106,6 +111,9 @@ windows-image-rmlist-%: build/bin/windows_amd64/rmlist.exe ensure-builder
 
 windows-image-similar-%: build/bin/windows_amd64/similar.exe ensure-builder
 	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform windows/amd64 -f cmd/similar/Dockerfile.windows --build-arg WINDOWS_VERSION=$* -t $(SIMILAR_IMAGE):$(TAG)-windows_amd64-$* . $(DOCKER_PUSH)
+
+windows-image-treemap-%: build/bin/windows_amd64/treemap.exe ensure-builder
+	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform windows/amd64 -f cmd/treemap/Dockerfile.windows --build-arg WINDOWS_VERSION=$* -t $(TREEMAP_IMAGE):$(TAG)-windows_amd64-$* . $(DOCKER_PUSH)
 
 windows-image-unique-%: build/bin/windows_amd64/unique.exe ensure-builder
 	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform windows/amd64 -f cmd/unique/Dockerfile.windows --build-arg WINDOWS_VERSION=$* -t $(UNIQUE_IMAGE):$(TAG)-windows_amd64-$* . $(DOCKER_PUSH)
