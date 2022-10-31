@@ -87,6 +87,10 @@ func StatFromFileWalk(path string, info os.FileInfo) (*pb.FileMetadata, error) {
 	}
 
 	return &pb.FileMetadata{
+		FileUri: &pb.FileUri{
+			Id:        path,
+			LocalPath: path,
+		},
 		FileStat: fileStat,
 		Media:    mediaMD,
 	}, nil
