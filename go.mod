@@ -8,7 +8,7 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/pillash/mp4util v0.0.0-20150601005705-98601ecf290a
 	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/tajtiattila/metadata v0.0.0-20180130123038-1ef25f4c37ea
 	google.golang.org/protobuf v1.28.1
 )
