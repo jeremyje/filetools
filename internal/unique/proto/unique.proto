@@ -1,0 +1,50 @@
+// Copyright 2022 Jeremy Edwards
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package filetools.internal.unique.proto;
+option go_package = "github.com/jeremyje/filetools/internal/unique/proto";
+
+// FileSummary is a minimal set of information to determine a file's uniqueness.
+message FileSummary {
+  // Name of the file.
+  string name = 1;
+  // Size of the file in bytes; system-dependent for others.
+  int64 size = 2;
+  // Hash of the file.
+  string hash = 3;
+  // Should delete file if true.
+  bool should_delete = 4;
+}
+
+// DuplicateFileReport is the report of all non-unique files.
+message DuplicateFileReport {
+  message DuplicateFileSet {
+    repeated FileSummary file = 1;
+    // Size of the file in bytes; system-dependent for others.
+    int64 size = 2;
+    // Hash of the file.
+    string hash = 3;
+  }
+  // Duplicates found.
+  repeated DuplicateFileSet duplicates = 1;
+  // Title of the report.
+  string title = 2;
+  // Duplicate bytes is the size of data that can be deleted.
+  int64 duplicate_bytes = 3;
+
+  // Delete enabled indicates that deletion were actually performed.
+  bool delete_enabled = 4;
+}
