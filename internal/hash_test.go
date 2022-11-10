@@ -22,8 +22,10 @@ import (
 	"crypto/sha512"
 	"fmt"
 	"hash"
+	"hash/adler32"
 	"hash/crc32"
 	"hash/crc64"
+	"hash/fnv"
 	"os"
 	"testing"
 
@@ -61,11 +63,11 @@ func BenchmarkFastVsXxhash32(b *testing.B) {
 }
 
 func BenchmarkHashFunctionsBySize(b *testing.B) {
-	functions := []string{"md5", "sha1", "sha224", "sha256", "sha384", "sha512", "crc32", "crc64", "xxhash", "xxhash32", "xxhash64"}
+	functions := []string{"adler32", "fnv32", "fnv32a", "fnv64", "fnv64a", "fnv128", "fnv128a", "md5", "sha1", "sha224", "sha256", "sha384", "sha512", "crc32", "crc64", "xxhash", "xxhash32", "xxhash64"}
 	sizes := []int64{kb, 4 * kb, 16 * kb, mb, 16 * mb}
-	for _, functionName := range functions {
-		for _, size := range sizes {
-			filename := mustFileOfLength(size)
+	for _, size := range sizes {
+		filename := mustFileOfLength(size)
+		for _, functionName := range functions {
 			b.Run(fmt.Sprintf("%s x %d", functionName, size), func(b *testing.B) {
 				for i := 0; i < b.N; i++ {
 					hashFile(filename, functionName)
@@ -91,6 +93,13 @@ func BenchmarkHashFunctions(b *testing.B) {
 		{"xxhash", xxhash.New()},
 		{"xxhash32", xxhashOneOfOne.NewHash32()},
 		{"xxhash64", xxhashOneOfOne.NewHash64()},
+		{"fnv32", fnv.New32()},
+		{"fnv32a", fnv.New32a()},
+		{"fnv64", fnv.New64()},
+		{"fnv64a", fnv.New64a()},
+		{"fnv128", fnv.New128()},
+		{"fnv128a", fnv.New128a()},
+		{"adler32", adler32.New()},
 	}
 	for _, tc := range testCases {
 		tc := tc
@@ -143,6 +152,13 @@ func TestNewHashFromName(t *testing.T) {
 		{"xxhash", xxhash.New()},
 		{"xxhash32", xxhashOneOfOne.NewHash32()},
 		{"xxhash64", xxhashOneOfOne.NewHash64()},
+		{"fnv32", fnv.New32()},
+		{"fnv32a", fnv.New32a()},
+		{"fnv64", fnv.New64()},
+		{"fnv64a", fnv.New64a()},
+		{"fnv128", fnv.New128()},
+		{"fnv128a", fnv.New128a()},
+		{"adler32", adler32.New()},
 		{"does-not-exist", nil},
 		{"", nil},
 	}
@@ -216,6 +232,13 @@ func TestHashFile(t *testing.T) {
 		{testdata.Get(t, "hasdupes/a.1"), "xxhash", "d24ec4f1a98c6e5b"},
 		{testdata.Get(t, "hasdupes/a.1"), "xxhash32", "550d7456"},
 		{testdata.Get(t, "hasdupes/a.1"), "xxhash64", "d24ec4f1a98c6e5b"},
+		{testdata.Get(t, "hasdupes/a.1"), "fnv32", "050c5d7e"},
+		{testdata.Get(t, "hasdupes/a.1"), "fnv32a", "e40c292c"},
+		{testdata.Get(t, "hasdupes/a.1"), "fnv64", "af63bd4c8601b7be"},
+		{testdata.Get(t, "hasdupes/a.1"), "fnv64a", "af63dc4c8601ec8c"},
+		{testdata.Get(t, "hasdupes/a.1"), "fnv128", "d228cb69101a8caf78912b704e4a141e"},
+		{testdata.Get(t, "hasdupes/a.1"), "fnv128a", "d228cb696f1a8caf78912b704e4a8964"},
+		{testdata.Get(t, "hasdupes/a.1"), "adler32", "00620062"},
 	}
 	for _, tc := range testCases {
 		tc := tc

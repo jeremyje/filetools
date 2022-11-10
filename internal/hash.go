@@ -21,8 +21,10 @@ import (
 	"crypto/sha512"
 	"fmt"
 	"hash"
+	"hash/adler32"
 	"hash/crc32"
 	"hash/crc64"
+	"hash/fnv"
 	"io"
 	"os"
 	"path/filepath"
@@ -63,6 +65,20 @@ func uniqueFile(filename string) (string, error) {
 
 func newHashFromName(hashAlgorithmName string) hash.Hash {
 	switch strings.Replace(strings.ToLower(hashAlgorithmName), "-", "", -1) {
+	case "fnv32":
+		return fnv.New32()
+	case "fnv32a":
+		return fnv.New32a()
+	case "fnv64":
+		return fnv.New64()
+	case "fnv64a":
+		return fnv.New64a()
+	case "fnv128":
+		return fnv.New128()
+	case "fnv128a":
+		return fnv.New128a()
+	case "adler32":
+		return adler32.New()
 	case "md5":
 		return md5.New()
 	case "sha1":
