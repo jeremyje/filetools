@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jeremyje/filetools/testdata"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,7 +28,7 @@ func TestUnique(t *testing.T) {
 		params *UniqueParams
 	}{
 		{&UniqueParams{Paths: []string{"."}, StatusFrequency: time.Second}},
-		{&UniqueParams{Paths: []string{"../testdata/"}, StatusFrequency: time.Second}},
+		{&UniqueParams{Paths: []string{testdata.GetDirectory(t)}, StatusFrequency: time.Second}},
 	}
 	for _, tc := range testCases {
 		tc := tc

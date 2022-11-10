@@ -43,9 +43,9 @@ func TestTreemap(t *testing.T) {
 			wantFileCount: 9,
 		},
 		{
-			paths:         []string{testdata.Get(t, "")},
-			wantSize:      6840531,
-			wantFileCount: 35,
+			paths:         []string{testdata.Get(t, "nodupes")},
+			wantSize:      6,
+			wantFileCount: 3,
 		},
 	}
 	for _, tc := range testCases {

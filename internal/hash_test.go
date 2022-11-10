@@ -27,6 +27,8 @@ import (
 	"os"
 	"testing"
 
+	xxhashOneOfOne "github.com/OneOfOne/xxhash"
+	"github.com/cespare/xxhash/v2"
 	"github.com/jeremyje/filetools/internal/localfs"
 	"github.com/jeremyje/filetools/testdata"
 	"github.com/pkg/errors"
@@ -38,8 +40,28 @@ const (
 	mb = 1024 * 1024
 )
 
+func BenchmarkFastVsXxhash32(b *testing.B) {
+	sizes := []int64{1, 4, 8, 128, kb, 4 * kb, 16 * kb, mb, 16 * mb}
+	for _, size := range sizes {
+		filename := mustFileOfLength(size)
+		b.Run(fmt.Sprintf("xxhash32 x %d", size), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				hashFile(filename, "xxhash32")
+			}
+		})
+	}
+	for _, size := range sizes {
+		filename := mustFileOfLength(size)
+		b.Run(fmt.Sprintf("uniqueHash x %d", size), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				uniqueFile(filename)
+			}
+		})
+	}
+}
+
 func BenchmarkHashFunctionsBySize(b *testing.B) {
-	functions := []string{"md5", "sha1", "sha224", "sha256", "sha384", "sha512", "crc32", "crc64"}
+	functions := []string{"md5", "sha1", "sha224", "sha256", "sha384", "sha512", "crc32", "crc64", "xxhash", "xxhash32", "xxhash64"}
 	sizes := []int64{kb, 4 * kb, 16 * kb, mb, 16 * mb}
 	for _, functionName := range functions {
 		for _, size := range sizes {
@@ -66,6 +88,9 @@ func BenchmarkHashFunctions(b *testing.B) {
 		{"sha512", sha512.New()},
 		{"crc32", crc32.NewIEEE()},
 		{"crc64", crc64.New(crc64Table)},
+		{"xxhash", xxhash.New()},
+		{"xxhash32", xxhashOneOfOne.NewHash32()},
+		{"xxhash64", xxhashOneOfOne.NewHash64()},
 	}
 	for _, tc := range testCases {
 		tc := tc
@@ -115,6 +140,9 @@ func TestNewHashFromName(t *testing.T) {
 		{"sha512", sha512.New()},
 		{"crc32", crc32.NewIEEE()},
 		{"crc64", crc64.New(crc64Table)},
+		{"xxhash", xxhash.New()},
+		{"xxhash32", xxhashOneOfOne.NewHash32()},
+		{"xxhash64", xxhashOneOfOne.NewHash64()},
 		{"does-not-exist", nil},
 		{"", nil},
 	}
@@ -185,6 +213,9 @@ func TestHashFile(t *testing.T) {
 		{testdata.Get(t, "hasdupes/a.1"), "crc32", "e8b7be43"},
 		{testdata.Get(t, "hasdupes/a.1"), "crc64", "3420000000000000"},
 		{testdata.Get(t, "hasdupes/b.1"), "MD5", "92eb5ffee6ae2fec3ad71c777531578f"},
+		{testdata.Get(t, "hasdupes/a.1"), "xxhash", "d24ec4f1a98c6e5b"},
+		{testdata.Get(t, "hasdupes/a.1"), "xxhash32", "550d7456"},
+		{testdata.Get(t, "hasdupes/a.1"), "xxhash64", "d24ec4f1a98c6e5b"},
 	}
 	for _, tc := range testCases {
 		tc := tc

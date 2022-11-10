@@ -28,12 +28,38 @@ import (
 	"path/filepath"
 	"strings"
 
+	xxhashOneOfOne "github.com/OneOfOne/xxhash"
+	"github.com/cespare/xxhash/v2"
 	"github.com/pkg/errors"
 )
 
 var (
-	crc64Table = crc64.MakeTable(crc64.ISO)
+	crc64Table   = crc64.MakeTable(crc64.ISO)
+	maxRawAsHash = int64(1024)
 )
+
+func uniqueFile(filename string) (string, error) {
+	f, err := openFile(filename)
+	if err != nil {
+		return "", fmt.Errorf("cannot open file '%s', err= %w", filename, err)
+	}
+	stat, err := f.Stat()
+	if err == nil {
+		if maxRawAsHash >= stat.Size() {
+			data, err := io.ReadAll(f)
+			f.Close()
+			if err != nil {
+				return "", err
+			}
+			return fmt.Sprintf("raw-%s", data), nil
+		}
+	}
+	// defer f.Close() is not called for performance reasons.
+	h := crc32.NewIEEE()
+	res, err := computeHash(f, h)
+	f.Close()
+	return string(res), err
+}
 
 func newHashFromName(hashAlgorithmName string) hash.Hash {
 	switch strings.Replace(strings.ToLower(hashAlgorithmName), "-", "", -1) {
@@ -53,6 +79,12 @@ func newHashFromName(hashAlgorithmName string) hash.Hash {
 		return crc32.NewIEEE()
 	case "crc64":
 		return crc64.New(crc64Table)
+	case "xxhash32":
+		return xxhashOneOfOne.NewHash32()
+	case "xxhash64":
+		return xxhashOneOfOne.NewHash64()
+	case "xxhash":
+		return xxhash.New()
 	default:
 		return nil
 	}
