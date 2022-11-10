@@ -35,6 +35,7 @@ UNIQUE_IMAGE = $(REGISTRY)/unique
 ALL_IMAGES = $(CLEANUP_IMAGE) $(RMLIST_IMAGE) $(SIMILAR_IMAGE) $(TREEMAP_IMAGE) $(UNIQUE_IMAGE)
 
 PROTOS = internal/metadata/proto/metadata.pb.go
+PROTOS += internal/unique/proto/unique.pb.go
 
 ASSETS = $(PROTOS)
 NICHE_PLATFORMS = freebsd openbsd netbsd darwin
@@ -154,5 +155,11 @@ coverage.txt:
 	done
 
 presubmit: clean check all coverage.txt
+
+run:
+	go run cmd/unique/unique.go -path=$(PWD) -verbose=true -output=report.html
+
+run2:
+	go run cmd/unique2/unique2.go -path=$(PWD) -verbose=true -output=report.html
 
 .PHONY: all deps fmt vet lint test bench check clean presubmit

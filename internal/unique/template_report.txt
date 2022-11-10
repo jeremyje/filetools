@@ -1,0 +1,6 @@
+{{ range  $duplicateFileSet := .Duplicates -}}
+{{ $duplicateFileSet.Hash }}
+{{ range $duplicateFileSet.File -}}
+{{ $duplicateFileSet.Size | sizeString }} - {{.Name}}{{if .ShouldDelete }} {{if $.DeleteEnabled }}[DELETED]{{else}}[DRYRUN]{{end}}{{end}}
+{{ end }}
+{{- end -}}

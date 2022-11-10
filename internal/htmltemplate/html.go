@@ -17,6 +17,7 @@ package htmltemplate
 import (
 	"html/template"
 	"io"
+	"strings"
 	"sync/atomic"
 
 	_ "embed"
@@ -33,6 +34,7 @@ var (
 func Write(w io.Writer, templateText string, arg interface{}) error {
 	t, err := template.New("report").Funcs(template.FuncMap{
 		"sizeString": sizeString,
+		"fileURI":    fileURI,
 		"oddEven":    newEvenOdd().next,
 	}).Parse(templateText)
 	if err != nil {
@@ -43,6 +45,10 @@ func Write(w io.Writer, templateText string, arg interface{}) error {
 
 func sizeString(size int64) string {
 	return humanize.IBytes(uint64(size))
+}
+
+func fileURI(name string) string {
+	return strings.ReplaceAll(name, "\\", "/")
 }
 
 type evenOdd struct {
