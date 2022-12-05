@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/OneOfOne/xxhash v1.2.8
-	github.com/cespare/xxhash/v2 v2.1.2
+	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086
 	github.com/dustin/go-humanize v1.0.0
 	github.com/google/go-cmp v0.5.9
