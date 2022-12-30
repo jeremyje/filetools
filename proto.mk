@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # https://github.com/protocolbuffers/protobuf/releases
-PROTOC_VERSION = 21.9
+PROTOC_VERSION = 21.12
 
 EXE = 
 FX_FIND = find
@@ -109,13 +109,13 @@ build/toolchain/bin/protoc-gen-openapiv2$(EXE): third_party/google_protobuf/incl
 build/archives/googleapis.zip:
 	mkdir -p $(ARCHIVES_DIR)/
 	$(FX_CURL) -o $(ARCHIVES_DIR)/googleapis.zip -L \
-		https://github.com/googleapis/googleapis/archive/master.zip
+		https://github.com/googleapis/googleapis/archive/refs/heads/master.zip
 	touch $@
 
 build/archives/grpc-gateway.zip:
 	mkdir -p $(ARCHIVES_DIR)/
 	$(FX_CURL) -o $(ARCHIVES_DIR)/grpc-gateway.zip -L \
-		https://github.com/grpc-ecosystem/grpc-gateway/archive/master.zip
+		https://github.com/grpc-ecosystem/grpc-gateway/archive/refs/heads/main.zip
 	touch $@
 
 third_party/google_protobuf/include/google/: third_party/google_protobuf/include/google/LICENSE
@@ -161,9 +161,9 @@ third_party/grpc_gateway/include/protoc-gen-openapiv2/LICENSE.txt: build/archive
 
 	cp $(ARCHIVES_DIR)/grpc-gateway.zip $(TOOLCHAIN_DIR)/grpc-gateway-temp/
 	(cd $(TOOLCHAIN_DIR)/grpc-gateway-temp/; unzip -q -o grpc-gateway.zip)
-	cp -rf $(TOOLCHAIN_DIR)/grpc-gateway-temp/grpc-gateway-master/protoc-gen-openapiv2/options/*.proto \
+	cp -rf $(TOOLCHAIN_DIR)/grpc-gateway-temp/grpc-gateway-main/protoc-gen-openapiv2/options/*.proto \
 		$(THIRDPARTY_DIR)/grpc_gateway/include/protoc-gen-openapiv2/options/
-	cp -f $(TOOLCHAIN_DIR)/grpc-gateway-temp/grpc-gateway-master/LICENSE.txt \
+	cp -f $(TOOLCHAIN_DIR)/grpc-gateway-temp/grpc-gateway-main/LICENSE.txt \
 		$(THIRDPARTY_DIR)/grpc_gateway/include/protoc-gen-openapiv2/LICENSE.txt
 	$(FX_FIND) $(THIRDPARTY_DIR)/grpc_gateway/include/protoc-gen-openapiv2/ -type f -name '*BUILD.bazel' -exec rm {} +
 	rm -rf $(TOOLCHAIN_DIR)/grpc-gateway-temp
