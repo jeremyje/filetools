@@ -6,7 +6,7 @@ require (
 	github.com/OneOfOne/xxhash v1.2.8
 	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086
-	github.com/dustin/go-humanize v1.0.0
+	github.com/dustin/go-humanize v1.0.1
 	github.com/google/go-cmp v0.5.9
 	github.com/pillash/mp4util v0.0.0-20150601005705-98601ecf290a
 	github.com/pkg/errors v0.9.1
