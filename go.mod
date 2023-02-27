@@ -10,7 +10,7 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/pillash/mp4util v0.0.0-20150601005705-98601ecf290a
 	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	github.com/tajtiattila/metadata v0.0.0-20221215122306-ecdbfc756113
 	go.uber.org/zap v1.24.0
 	google.golang.org/protobuf v1.28.1
