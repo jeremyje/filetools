@@ -1,29 +1,36 @@
-# File Tools
+# File Tool
 
-[![GoDoc](https://godoc.org/github.com/jeremyje/filetools?status.svg)](https://godoc.org/github.com/jeremyje/filetools)
-[![Go Report Card](https://goreportcard.com/badge/github.com/jeremyje/filetools)](https://goreportcard.com/report/github.com/jeremyje/filetools)
+[![CI](https://github.com/jeremyje/filetools/actions/workflows/ci.yaml/badge.svg)](https://github.com/jeremyje/filetools/actions/workflows/ci.yaml)
+![Crates.io Version](https://img.shields.io/crates/v/filetool)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/jeremyje/filetools/blob/master/LICENSE)
 [![GitHub release](https://img.shields.io/github/release-pre/jeremyje/filetools.svg)](https://github.com/jeremyje/filetools/releases)
-[![Build Status](https://travis-ci.org/jeremyje/filetools.svg?branch=master)](https://travis-ci.org/jeremyje/filetools)
-[![codecov](https://codecov.io/gh/jeremyje/filetools/branch/master/graph/badge.svg)](https://codecov.io/gh/jeremyje/filetools)
 
-A collection of tools to manage a large collection of files.
+```text
+A tool to manage and cleanup files on your hard drive.
 
- * Find Duplicate files
- * Find similarly named files
+Usage: filetool [OPTIONS] <COMMAND>
 
-Coming Soon
+Commands:
+  checksum
+          Calculates checksums (xxhash3-64bit) of files in selected directories
+  clean-empty-directory
+          Removes directories that do not contain any files
+  duplicate
+          Finds duplicate files and conditionally deletes them
+  rmlist
+          Delete files from file lists
+  similar-name
+          List files with similar file names
+  help
+          Print this message or the help of the given subcommand(s)
 
- * Binary releases for Windows, Linux, and MacOs
-
-Unique Bugs
-
- * Improve Report
-  * Sort Items by size, descending
-  * File Size Function
- * Actually support different hash algorithms.
-
-Similar
- * Use sharded multiwalk and delete hold multiwalk function since it's prone to race conditions.
- * similar tests are dead locking.
- * Similar cannot handle multiple paths yet because of race-condition in multiwalk acting on 1 map.
+Options:
+  -v, --verbose...
+          Increase logging verbosity
+  -q, --quiet...
+          Decrease logging verbosity
+  -h, --help
+          Print help
+  -V, --version
+          Print version
+```
