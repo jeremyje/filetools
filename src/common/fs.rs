@@ -144,27 +144,25 @@ pub(crate) fn walk_dir(
                                     if path_metadata.is_dir() {
                                         walk_dir(&path, tx)?;
                                     } else if path.is_file() {
-                                        match path.to_str() {
-                                            Some(file_name) => {
-                                                let size = path_metadata.len();
-                                                let created = path_metadata.created()?;
-                                                let modified = path_metadata.modified()?;
+                                        if let Some(file_name) = path.to_str() {
+                                            let size = path_metadata.len();
+                                            let created = path_metadata.created()?;
+                                            let modified = path_metadata.modified()?;
 
-                                                tx.send(FileMetadata::new(
-                                                    file_name, size, created, modified,
-                                                ))
-                                                .map_err(|e| {
-                                                    io::Error::new(io::ErrorKind::Interrupted, e)
-                                                })?;
-                                            }
-                                            None => warn!(
-                                                "'{path:#?}' cannot be converted to a string, skipping."
-                                            ),
+                                            tx.send(FileMetadata::new(
+                                                file_name, size, created, modified,
+                                            ))
+                                            .map_err(|e| {
+                                                io::Error::new(io::ErrorKind::Interrupted, e)
+                                            })?;
+                                        } else {
+                                            warn!(
+                                                "'{path:#?}' cannot be converted to a string, skipping.");
                                         }
                                     }
                                 }
                                 Err(error) => {
-                                    warn!("cannot obtain file metadata for {path:#?}, {error}")
+                                    warn!("cannot obtain file metadata for {path:#?}, {error}");
                                 }
                             }
                         }

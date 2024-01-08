@@ -104,6 +104,7 @@ fmt: $(ASSETS)
 	cargo fmt
 
 lint: fmt
+	cargo clippy -- -W clippy::pedantic
 
 test: $(ASSETS)
 	cargo test
