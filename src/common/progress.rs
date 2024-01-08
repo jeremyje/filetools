@@ -15,7 +15,7 @@
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
 /// Creates a standard multi ProgressBar for filetool.
-pub struct ProgressFactory {
+pub(crate) struct ProgressFactory {
     title_style: ProgressStyle,
     detail_style: ProgressStyle,
     bar_style: ProgressStyle,
@@ -25,7 +25,7 @@ pub struct ProgressFactory {
 
 impl ProgressFactory {
     /// new creates a new duplicate file DB.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             title_style: ProgressStyle::with_template(
                 "[{elapsed_precise}] {prefix:.bold.dim} {wide_msg}",
@@ -40,26 +40,26 @@ impl ProgressFactory {
         }
     }
 
-    pub fn create_title(&self) -> ProgressBar {
+    pub(crate) fn create_title(&self) -> ProgressBar {
         let progress_bar = self.multi_progress.add(ProgressBar::new(1));
         progress_bar.set_style(self.title_style.clone());
         progress_bar.enable_steady_tick(std::time::Duration::from_secs(1));
         progress_bar
     }
 
-    pub fn create_detail(&self) -> ProgressBar {
+    pub(crate) fn create_detail(&self) -> ProgressBar {
         let progress_bar = self.multi_progress.add(ProgressBar::new(1));
         progress_bar.set_style(self.detail_style.clone());
         progress_bar
     }
 
-    pub fn create_bar(&self) -> ProgressBar {
+    pub(crate) fn create_bar(&self) -> ProgressBar {
         let progress_bar = self.multi_progress.add(ProgressBar::new(1));
         progress_bar.set_style(self.bar_style.clone());
         progress_bar
     }
 
-    pub fn create_danger(&self) -> ProgressBar {
+    pub(crate) fn create_danger(&self) -> ProgressBar {
         let progress_bar = self.multi_progress.add(ProgressBar::new(1));
         progress_bar.set_style(self.danger_bar_style.clone());
         progress_bar

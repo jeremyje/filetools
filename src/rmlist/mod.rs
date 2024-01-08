@@ -15,16 +15,16 @@
 use std::io;
 
 #[derive(clap::Args)]
-pub struct Args {
+pub(crate) struct Args {
     /// List of files that contain 1 file name per line of files to delete.
     #[arg(long, default_value = ".")]
-    pub path: Vec<std::path::PathBuf>,
+    pub(crate) path: Vec<std::path::PathBuf>,
     /// If false, will perform the delete based on the pattern filtering provided by --delete_pattern.
     #[arg(long, default_value_t = true)]
-    pub dry_run: std::primitive::bool,
+    pub(crate) dry_run: std::primitive::bool,
 }
 
-pub fn run(args: &Args) -> io::Result<()> {
+pub(crate) fn run(args: &Args) -> io::Result<()> {
     let progress_factory = crate::common::progress::ProgressFactory::new();
     let pb_title = progress_factory.create_title();
     let pb_detail = progress_factory.create_detail();

@@ -16,13 +16,13 @@ use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use log::warn;
 
 #[derive(clap::Args)]
-pub struct Args {
+pub(crate) struct Args {
     /// List of directories that will be scanned to be removed if empty.
     #[arg(long, default_value = ".")]
-    pub path: Vec<std::path::PathBuf>,
+    pub(crate) path: Vec<std::path::PathBuf>,
     /// If false, the directories will actually be deleted. By default dry run is enabled and will only report empty directories.
     #[arg(long, default_value_t = true)]
-    pub dry_run: std::primitive::bool,
+    pub(crate) dry_run: std::primitive::bool,
 }
 
 fn new_progress_bar(multi_progress: &MultiProgress, spinner_style: &ProgressStyle) -> ProgressBar {
@@ -31,7 +31,7 @@ fn new_progress_bar(multi_progress: &MultiProgress, spinner_style: &ProgressStyl
     progress_bar
 }
 
-pub fn run(args: &Args) -> std::io::Result<()> {
+pub(crate) fn run(args: &Args) -> std::io::Result<()> {
     let spinner_style = ProgressStyle::with_template("{prefix:.bold.dim} {spinner} {wide_msg}")
         .unwrap()
         .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ");

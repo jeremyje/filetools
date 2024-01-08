@@ -15,19 +15,19 @@ use log::warn;
 use std::collections::HashMap;
 
 #[derive(clap::Args)]
-pub struct Args {
+pub(crate) struct Args {
     /// List of directories to scan for files that will have their checksums calculated.
     #[arg(long, default_value = ".")]
-    pub path: Vec<std::path::PathBuf>,
+    pub(crate) path: Vec<std::path::PathBuf>,
     /// Output file where the checksum database will be written to.
     #[arg(long, default_value = "checksums.txt")]
-    pub output: std::path::PathBuf,
+    pub(crate) output: std::path::PathBuf,
     /// Number of threads for calculating checksums.
     #[arg(long, default_value_t = 2)]
-    pub checksum_threads: usize,
+    pub(crate) checksum_threads: usize,
 }
 
-pub fn run(args: &Args) -> std::io::Result<()> {
+pub(crate) fn run(args: &Args) -> std::io::Result<()> {
     let progress_factory = crate::common::progress::ProgressFactory::new();
     let pb_title = progress_factory.create_title();
     let pb_detail = progress_factory.create_detail();

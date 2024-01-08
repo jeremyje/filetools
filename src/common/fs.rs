@@ -84,7 +84,7 @@ fn canonicalize_path_list<T: AsRef<Path>>(path_list: &[T]) -> io::Result<Vec<Pat
 /// let path_list = fs::optimize_path_list(vec![&home, &pwd, &usr, &usr_bin]);
 /// assert_eq!(path_list, vec![&home, &usr])
 /// ```
-pub fn canonical_paths<T: AsRef<Path>>(path_list: &[T]) -> io::Result<Vec<PathBuf>> {
+pub(crate) fn canonical_paths<T: AsRef<Path>>(path_list: &[T]) -> io::Result<Vec<PathBuf>> {
     for p in path_list {
         info!("scanning: {:#?}", p.as_ref())
     }
@@ -98,15 +98,15 @@ pub fn canonical_paths<T: AsRef<Path>>(path_list: &[T]) -> io::Result<Vec<PathBu
 }
 
 #[derive(Clone, Debug, serde::Serialize, Eq, Ord, PartialEq, PartialOrd)]
-pub struct FileMetadata {
-    pub size: u64,
-    pub path: std::path::PathBuf,
-    pub created: SystemTime,
-    pub modified: SystemTime,
+pub(crate) struct FileMetadata {
+    pub(crate) size: u64,
+    pub(crate) path: std::path::PathBuf,
+    pub(crate) created: SystemTime,
+    pub(crate) modified: SystemTime,
 }
 
 impl FileMetadata {
-    pub fn new(path: &str, size: u64, created: SystemTime, modified: SystemTime) -> Self {
+    pub(crate) fn new(path: &str, size: u64, created: SystemTime, modified: SystemTime) -> Self {
         Self {
             size,
             path: PathBuf::from(path),
@@ -115,7 +115,7 @@ impl FileMetadata {
         }
     }
 
-    pub fn to_key(&self) -> Option<String> {
+    pub(crate) fn to_key(&self) -> Option<String> {
         self.path.to_str().map(|path| {
             concat_string!(
                 "created://",
@@ -131,7 +131,10 @@ impl FileMetadata {
     }
 }
 
-pub fn walk_dir(path_dir: &Path, tx: &crossbeam_channel::Sender<FileMetadata>) -> io::Result<()> {
+pub(crate) fn walk_dir(
+    path_dir: &Path,
+    tx: &crossbeam_channel::Sender<FileMetadata>,
+) -> io::Result<()> {
     if path_dir.is_dir() {
         match fs::read_dir(path_dir) {
             Ok(entry_list) => {
@@ -210,7 +213,7 @@ fn scan_files<T: AsRef<Path>>(
     dir_walk_threads
 }
 
-pub fn threaded_walk_dir<T: AsRef<Path>>(
+pub(crate) fn threaded_walk_dir<T: AsRef<Path>>(
     path_list: &[T],
     path_tx: crossbeam_channel::Sender<crate::common::fs::FileMetadata>,
 ) -> io::Result<impl FnOnce()> {

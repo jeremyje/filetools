@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod checksum;
-pub mod db;
-pub mod fs;
-//pub mod media;
-pub mod progress;
-pub mod thread;
-pub mod util;
+pub(crate) mod checksum;
+pub(crate) mod db;
+pub(crate) mod fs;
+//pub(crate) mod media;
+pub(crate) mod progress;
+pub(crate) mod thread;
+pub(crate) mod util;

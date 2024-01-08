@@ -22,29 +22,29 @@ static CHECKSUM_FILE_DELIMITER: &str = "%";
 
 /// FileChecksumDB tracks checksums of files.
 #[derive(Debug)]
-pub struct FileChecksumDB {
+pub(crate) struct FileChecksumDB {
     m: HashMap<String, String>,
 }
 
 impl FileChecksumDB {
     /// new creates a new duplicate file DB.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self { m: HashMap::new() }
     }
 
     /// put a FileMetadata record into this DB.
-    pub fn put(&mut self, md: &crate::common::fs::FileMetadata, checksum: &str) {
+    pub(crate) fn put(&mut self, md: &crate::common::fs::FileMetadata, checksum: &str) {
         if let Some(key) = md.to_key() {
             let val = String::from(checksum);
             self.m.insert(key, val);
         }
     }
 
-    pub fn get(&self, md: &FileMetadata) -> Option<&String> {
+    pub(crate) fn get(&self, md: &FileMetadata) -> Option<&String> {
         md.to_key().and_then(|k| self.m.get(&k))
     }
 
-    pub fn load(&mut self, path: &std::path::Path) -> std::io::Result<()> {
+    pub(crate) fn load(&mut self, path: &std::path::Path) -> std::io::Result<()> {
         for line in std::fs::read_to_string(path)?.lines() {
             if let Some((checksum, key)) = line.split_once(CHECKSUM_FILE_DELIMITER) {
                 self.m.insert(String::from(key), String::from(checksum));
@@ -53,7 +53,7 @@ impl FileChecksumDB {
         Ok(())
     }
 
-    pub fn write(&self, path: &std::path::Path) -> std::io::Result<()> {
+    pub(crate) fn write(&self, path: &std::path::Path) -> std::io::Result<()> {
         let file = File::create(path)?;
         let mut writer = std::io::LineWriter::new(file);
         for (key, checksum) in &self.m {
