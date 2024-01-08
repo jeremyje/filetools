@@ -225,7 +225,7 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
         let delete_size_str = crate::common::util::human_size(delete_size);
 
         pb_delete_bar.finish_and_clear();
-        
+
         pb_detail.set_prefix("Report");
         pb_detail.set_message("Writing...");
 
