@@ -39,10 +39,7 @@ pub(crate) fn run(args: &Args) -> std::io::Result<()> {
     let mut threads = Vec::new();
     for path in crate::common::fs::canonical_paths(args.path.as_slice())? {
         let dry_run = args.dry_run;
-        let path_str = path
-            .to_str()
-            .map(String::from)
-            .unwrap_or(String::from("unknown"));
+        let path_str = path.to_str().map_or(String::from("unknown"), String::from);
         let progress_bar = new_progress_bar(&multi_progress, &spinner_style);
         let action_progress_bar = new_progress_bar(&multi_progress, &spinner_style);
 

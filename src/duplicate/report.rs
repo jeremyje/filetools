@@ -63,7 +63,7 @@ fn humansize(
     if !val.is_null() {
         let val = param.value().as_u64().unwrap();
         let rendered = crate::common::util::human_size(val);
-        write!(out, "{}", rendered)?;
+        write!(out, "{rendered}")?;
     }
 
     Ok(())

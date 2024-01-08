@@ -14,7 +14,7 @@
 
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
-/// Creates a standard multi ProgressBar for filetool.
+/// Creates a standard multi `ProgressBar` for filetool.
 pub(crate) struct ProgressFactory {
     title_style: ProgressStyle,
     detail_style: ProgressStyle,
@@ -82,8 +82,8 @@ mod tests {
         pb_bar.set_length(100);
         pb_bar.inc(500);
         pb_title.finish();
-        assert_eq!(true, pb_title.is_finished());
-        assert_eq!(false, pb_bar.is_finished());
-        assert_eq!(false, pb_detail.is_finished());
+        assert!(pb_title.is_finished());
+        assert!(!pb_bar.is_finished());
+        assert!(!pb_detail.is_finished());
     }
 }
