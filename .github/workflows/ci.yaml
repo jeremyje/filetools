@@ -1,4 +1,4 @@
-# Copyright 2022 Jeremy Edwards
+# Copyright 2024 Jeremy Edwards
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,117 +24,131 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: write
+      id-token: write
+    timeout-minutes: 30
     steps:
     # https://github.community/t/how-to-get-just-the-tag-name/16241/6
     - name: Get the version
       id: get_version
-      run: echo ::set-output name=VERSION::$(echo $GITHUB_REF | cut -d / -f 3 | cut -d v -f 2)
+      run: |
+        echo "VERSION=$(echo $GITHUB_REF | cut -d / -f 3 | cut -d v -f 2)" >> $GITHUB_OUTPUT
+        echo "build_date=$(date -u +'%Y%m%d')" >> $GITHUB_OUTPUT
+    
+    - name: Install Compilers
+      run: sudo apt-get install -y mingw-w64 g++-aarch64-linux-gnu libc6-dev-arm64-cross
+
     # Checks out a copy of your repository on the ubuntu-latest machine
     - name: Checkout Code
-      uses: actions/checkout@v3
-
-    # https://github.com/actions/setup-go
-    - name: Setup Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: '1.19'
-
-    - name: Clean
-      run: make clean
-    - name: Test
-      run: make test
-    - name: Coverage
-      run: make coverage.txt
-    - name: Push Code Coverage
-      uses: codecov/codecov-action@v3
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
-        files: ./coverage.txt # optional
-        flags: unittests # optional
-        name: codecov-umbrella # optional
-        fail_ci_if_error: true # optional (default = false)
-        verbose: true # optional (default = false)
-
-    - name: All Binaries
-      if: ${{ github.ref == 'refs/heads/main' }}
-      run: make all -j20
-    - name: Binaries
-      if: ${{ github.ref != 'refs/heads/main' }}
-      run: make binaries -j20
-
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      uses: actions/checkout@v4
 
     # https://github.com/docker/login-action#github-packages-docker-registry
     - name: Login to GitHub Container Registry
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         registry: ghcr.io
-        username: ${{ github.repository_owner }}
+        username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-
     # https://github.com/docker/login-action#github-packages-docker-registry
-    - name: Login to DockerHub
-      uses: docker/login-action@v2
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    # PR Images
-    - name: Core Images
-      if: ${{ github.ref != 'refs/heads/main' }}
-      run: |
-        make WINDOWS_PLATFORMS="" LINUX_PLATFORMS="linux_amd64 linux_arm64" images
-        make REGISTRY="ghcr.io/${{ github.actor }}" WINDOWS_PLATFORMS="" LINUX_PLATFORMS="linux_amd64 linux_arm64" images
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: "x86_64-unknown-linux-gnu,x86_64-pc-windows-gnu"
+        components: rustfmt, clippy
 
-    # Main line commit images.
-    - name: Images
-      if: ${{ github.ref == 'refs/heads/main' }}
-      run: |
-        make images
-        make REGISTRY="ghcr.io/${{ github.actor }}" images
-    - name: Images (:head)
-      if: ${{ github.ref == 'refs/heads/main' }}
-      run: |
-        make TAG=head images
-        make REGISTRY="ghcr.io/${{ github.actor }}" TAG=head images
+    - name: Format Check
+      run: cargo fmt --check
 
-    # Release Images
-    - name: Images (Release)
+    - name: Build
+      run: make all -j2
+
+    - name: Test
+      run: make test
+
+    - name: Annotate commit with clippy warnings
+      uses: giraffate/clippy-action@v1
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Run cargo-tarpaulin
+      uses: actions-rs/tarpaulin@v0.1
+      with:
+        version: '0.15.0'
+        args: '-- --test-threads 1'
+
+    - name: Archive code coverage results
+      uses: actions/upload-artifact@v1
+      with:
+        name: code-coverage-report
+        path: cobertura.xml
+
+    - name: Install cargo-audit binary crate
+      uses: actions-rs/install@v0.1
+      with:
+        crate: cargo-audit
+        version: latest
+        use-tool-cache: true
+    - name: Security audit
+      uses: actions-rs/audit-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build and Push Container Images
+      uses: docker/build-push-action@v5
+      with:
+        push: ${{ startsWith(github.ref, 'refs/tags/') }}
+        file: ./Dockerfile
+        tags: |
+          docker.io/${{ github.actor }}/filetool:canary
+          docker.io/${{ github.actor }}/filetool:0.1.0
+          docker.io/${{ github.actor }}/filetool:${{ github.sha }}
+          docker.io/${{ github.actor }}/filetool:${{ github.run_id }}
+          docker.io/${{ github.actor }}/filetool:${{ steps.get_version.outputs.build_date }}
+          ghcr.io/${{ github.actor }}/filetool:canary
+          ghcr.io/${{ github.actor }}/filetool:0.1.0
+          ghcr.io/${{ github.actor }}/filetool:${{ github.sha }}
+          ghcr.io/${{ github.actor }}/filetool:${{ github.run_id }}
+          ghcr.io/${{ github.actor }}/filetool:${{ steps.get_version.outputs.build_date }}
+        labels: |
+          org.opencontainers.image.title=Filetool
+          org.opencontainers.image.description=A tool to manage and cleanup files on your hard drive.
+          org.opencontainers.image.vendor=${{ github.actor }}
+          org.opencontainers.image.authors=${{ github.actor }}
+          org.opencontainers.image.version=0.1.0
+          org.opencontainers.image.url=${{ github.event.repository.clone_url }}
+          org.opencontainers.image.source=${{ github.event.repository.clone_url }}
+          org.opencontainers.image.created=${{ steps.get_version.outputs.build_timestamp }}
+          org.opencontainers.image.revision=${{ github.sha }}
+
+    - name: Publish Crate
       if: startsWith(github.ref, 'refs/tags/')
       run: |
-        make VERSION=${{ steps.get_version.outputs.VERSION }} images
-        make REGISTRY="ghcr.io/${{ github.actor }}" VERSION=${{ steps.get_version.outputs.VERSION }} images
-    - name: Images (:latest)
-      if: startsWith(github.ref, 'refs/tags/')
-      run: |
-        make VERSION=${{ steps.get_version.outputs.VERSION }} TAG=latest images
-        make REGISTRY="ghcr.io/${{ github.actor }}" VERSION=${{ steps.get_version.outputs.VERSION }} TAG=latest images
+        cargo publish --token ${CRATES_IO_TOKEN}
+      env:
+        CRATES_IO_TOKEN: ${CRATES_IO_TOKEN}
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
       with:
         generate_release_notes: true
-        draft: true
+        draft: false
         prerelease: false
         files: |
           LICENSE
-          build/bin/linux_amd64/cleanup
-          build/bin/linux_amd64/similar
-          build/bin/linux_amd64/unique
-          build/bin/windows_amd64/cleanup.exe
-          build/bin/windows_amd64/similar.exe
-          build/bin/windows_amd64/unique.exe
-
-    - name: Publish Application
-      uses: actions/upload-artifact@v3
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-        name: release.tar.gz
-        path: |
-          build/bin/*
-          LICENSE
+          target/x86_64-unknown-linux-gnu/release/filetool
+          target/x86_64-pc-windows-gnu/release/filetool.exe

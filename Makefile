@@ -1,4 +1,4 @@
-# Copyright 2019 Jeremy Edwards
+# Copyright 2024 Jeremy Edwards
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-include proto.mk
-
-GO = GO111MODULE=on go
+CARGO = cargo
 DOCKER = DOCKER_CLI_EXPERIMENTAL=enabled docker
 
 BASE_VERSION = 0.0.0-dev
@@ -24,52 +22,42 @@ VERSION = $(BASE_VERSION)-$(VERSION_SUFFIX)
 BUILD_DATE = $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 TAG := v$(VERSION)
 
-export PATH := $(PWD)/build/toolchain/bin:$(PATH):/root/go/bin:/usr/local/go/bin:/usr/go/bin
-
 REGISTRY = docker.io/jeremyje
-CLEANUP_IMAGE = $(REGISTRY)/cleanup
-RMLIST_IMAGE = $(REGISTRY)/rmlist
-SIMILAR_IMAGE = $(REGISTRY)/similar
-TREEMAP_IMAGE = $(REGISTRY)/treemap
-UNIQUE_IMAGE = $(REGISTRY)/unique
-ALL_IMAGES = $(CLEANUP_IMAGE) $(RMLIST_IMAGE) $(SIMILAR_IMAGE) $(TREEMAP_IMAGE) $(UNIQUE_IMAGE)
+FILETOOL_IMAGE = $(REGISTRY)/filetool
+ALL_IMAGES = $(FILETOOL_IMAGE)
 
-PROTOS = internal/metadata/proto/metadata.pb.go
-PROTOS += internal/unique/proto/unique.pb.go
+PROTOS = 
 
 ASSETS = $(PROTOS)
-NICHE_PLATFORMS = freebsd openbsd netbsd darwin
-LINUX_PLATFORMS = linux_386 linux_amd64 linux_arm_v5 linux_arm_v6 linux_arm_v7 linux_arm64 linux_s390x linux_ppc64le linux_riscv64 linux_mips64le linux_mips linux_mipsle linux_mips64
-LINUX_NICHE_PLATFORMS = 
-WINDOWS_PLATFORMS = windows_386 windows_amd64
-MAIN_PLATFORMS = windows_amd64 linux_amd64 linux_arm64
-ALL_PLATFORMS = $(LINUX_PLATFORMS) $(LINUX_NICHE_PLATFORMS) $(WINDOWS_PLATFORMS) $(foreach niche,$(NICHE_PLATFORMS),$(niche)_amd64 $(niche)_arm64)
-ALL_APPS = cleanup rmlist similar treemap unique
+ALL_APPS = filetool
+BUILD_TYPES = debug release
 
-MAIN_BINARIES = $(foreach app,$(ALL_APPS),$(foreach platform,$(MAIN_PLATFORMS),build/bin/$(platform)/$(app)$(if $(findstring windows_,$(platform)),.exe,)))
-ALL_BINARIES = $(foreach app,$(ALL_APPS),$(foreach platform,$(ALL_PLATFORMS),build/bin/$(platform)/$(app)$(if $(findstring windows_,$(platform)),.exe,)))
+# rustc --print target-list
+RUST_TRIPLES = x86_64-unknown-linux-gnu
+RUST_TRIPLES += x86_64-pc-windows-gnu
+#RUST_TRIPLES += aarch64-apple-darwin
+#RUST_TRIPLES += aarch64-pc-windows-msvc
+#RUST_TRIPLES += aarch64-unknown-linux-musl
+#RUST_TRIPLES += x86_64-unknown-freebsd
+#RUST_TRIPLES += x86_64-unknown-linux-musl
+#RUST_TRIPLES += x86_64-unknown-netbsd
+#RUST_TRIPLES += riscv64gc-unknown-linux-gnu
+#RUST_TRIPLES += s390x-unknown-linux-gnu
+
+ALL_BINARIES = $(foreach app,$(ALL_APPS),$(foreach triple,$(RUST_TRIPLES),$(foreach buildtype,$(BUILD_TYPES),target/$(triple)/$(buildtype)/$(app)$(if $(findstring windows_,$(platform)),.exe,))))
+ALL_RUST_TOOLCHAIN = $(foreach triple,$(RUST_TRIPLES),rust-toolchain-$(triple))
 # https://hub.docker.com/_/microsoft-windows-nanoserver
 WINDOWS_VERSIONS = 1809 20H2 ltsc2022
 BUILDX_BUILDER = buildx-builder
-LINUX_CPU_PLATFORMS = amd64 arm64 ppc64le s390x arm/v5 arm/v6 arm/v7
 
-binaries: $(MAIN_BINARIES)
 all: $(ALL_BINARIES)
 assets: $(ASSETS)
 protos: $(PROTOS)
 
-build/bin/%: $(ASSETS)
-	GOOS=$(firstword $(subst _, ,$(notdir $(abspath $(dir $@))))) GOARCH=$(word 2, $(subst _, ,$(notdir $(abspath $(dir $@))))) GOARM=$(subst v,,$(word 3, $(subst _, ,$(notdir $(abspath $(dir $@)))))) CGO_ENABLED=0 $(GO) build -o $@ cmd/$(basename $(notdir $@))/$(basename $(notdir $@)).go
-	touch $@
-
 # https://github.com/docker-library/official-images#architectures-other-than-amd64
 images: DOCKER_PUSH = --push
 images: linux-images windows-images
-	-$(DOCKER) manifest rm $(CLEANUP_IMAGE):$(TAG)
-	-$(DOCKER) manifest rm $(RMLIST_IMAGE):$(TAG)
-	-$(DOCKER) manifest rm $(SIMILAR_IMAGE):$(TAG)
-	-$(DOCKER) manifest rm $(TREEMAP_IMAGE):$(TAG)
-	-$(DOCKER) manifest rm $(UNIQUE_IMAGE):$(TAG)
+	-$(DOCKER) manifest rm $(FILETOOL_IMAGE):$(TAG)
 
 	for image in $(ALL_IMAGES) ; do \
 		$(DOCKER) manifest create $$image:$(TAG) $(foreach winver,$(WINDOWS_VERSIONS),$${image}:$(TAG)-windows_amd64-$(winver)) $(foreach platform,$(LINUX_PLATFORMS),$${image}:$(TAG)-$(platform)) ; \
@@ -86,80 +74,54 @@ ensure-builder:
 ALL_LINUX_IMAGES = $(foreach app,$(ALL_APPS),$(foreach platform,$(LINUX_PLATFORMS),linux-image-$(app)-$(platform)))
 linux-images: $(ALL_LINUX_IMAGES)
 
-linux-image-cleanup-%: build/bin/%/cleanup ensure-builder
-	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform $(subst _,/,$*) --build-arg BINARY_PATH=$< -f cmd/cleanup/Dockerfile -t $(CLEANUP_IMAGE):$(TAG)-$* . $(DOCKER_PUSH)
-
-linux-image-rmlist-%: build/bin/%/rmlist ensure-builder
-	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform $(subst _,/,$*) --build-arg BINARY_PATH=$< -f cmd/rmlist/Dockerfile -t $(RMLIST_IMAGE):$(TAG)-$* . $(DOCKER_PUSH)
-
-linux-image-similar-%: build/bin/%/similar ensure-builder
-	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform $(subst _,/,$*) --build-arg BINARY_PATH=$< -f cmd/similar/Dockerfile -t $(SIMILAR_IMAGE):$(TAG)-$* . $(DOCKER_PUSH)
-
-linux-image-treemap-%: build/bin/%/treemap ensure-builder
-	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform $(subst _,/,$*) --build-arg BINARY_PATH=$< -f cmd/treemap/Dockerfile -t $(TREEMAP_IMAGE):$(TAG)-$* . $(DOCKER_PUSH)
-
-linux-image-unique-%: build/bin/%/unique ensure-builder
-	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform $(subst _,/,$*) --build-arg BINARY_PATH=$< -f cmd/unique/Dockerfile -t $(UNIQUE_IMAGE):$(TAG)-$* . $(DOCKER_PUSH)
+linux-image-filetool: target/x86_64-unknown-linux-gnu/release/filetool
+	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform linux/amd64 --build-arg BINARY_PATH=$< -f Dockerfile -t $(FILETOOL_IMAGE):$(TAG)-$* . $(DOCKER_PUSH)
 
 ALL_WINDOWS_IMAGES = $(foreach app,$(ALL_APPS),$(foreach winver,$(WINDOWS_VERSIONS),windows-image-$(app)-$(winver)))
 windows-images: $(ALL_WINDOWS_IMAGES)
 
-windows-image-cleanup-%: build/bin/windows_amd64/cleanup.exe ensure-builder
-	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform windows/amd64 -f cmd/cleanup/Dockerfile.windows --build-arg WINDOWS_VERSION=$* -t $(CLEANUP_IMAGE):$(TAG)-windows_amd64-$* . $(DOCKER_PUSH)
+windows-image-filetool-%: build/bin/windows_amd64/filetool.exe ensure-builder
+	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform windows/amd64 -f Dockerfile.windows --build-arg WINDOWS_VERSION=$* -t $(FILETOOL_IMAGE):$(TAG)-windows_amd64-$* . $(DOCKER_PUSH)
 
-windows-image-rmlist-%: build/bin/windows_amd64/rmlist.exe ensure-builder
-	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform windows/amd64 -f cmd/rmlist/Dockerfile.windows --build-arg WINDOWS_VERSION=$* -t $(RMLIST_IMAGE):$(TAG)-windows_amd64-$* . $(DOCKER_PUSH)
+rust-toolchain: $(ALL_RUST_TOOLCHAIN)
 
-windows-image-similar-%: build/bin/windows_amd64/similar.exe ensure-builder
-	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform windows/amd64 -f cmd/similar/Dockerfile.windows --build-arg WINDOWS_VERSION=$* -t $(SIMILAR_IMAGE):$(TAG)-windows_amd64-$* . $(DOCKER_PUSH)
+rust-toolchain-%:
+	echo "Toolchain: $*"
+	rustup target add $*
 
-windows-image-treemap-%: build/bin/windows_amd64/treemap.exe ensure-builder
-	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform windows/amd64 -f cmd/treemap/Dockerfile.windows --build-arg WINDOWS_VERSION=$* -t $(TREEMAP_IMAGE):$(TAG)-windows_amd64-$* . $(DOCKER_PUSH)
+target/%/debug/filetool:
+	echo "Building: $*"
+	cargo build --target $*
 
-windows-image-unique-%: build/bin/windows_amd64/unique.exe ensure-builder
-	$(DOCKER) buildx build --builder $(BUILDX_BUILDER) --platform windows/amd64 -f cmd/unique/Dockerfile.windows --build-arg WINDOWS_VERSION=$* -t $(UNIQUE_IMAGE):$(TAG)-windows_amd64-$* . $(DOCKER_PUSH)
+target/%/release/filetool:
+	echo "Building: $*"
+	cargo build --target $* --release
 
 deps:
-	$(GO) mod download
+	cargo update
 
 fmt: $(ASSETS)
-	gofmt -s -w cmd/ internal/ testdata/
-	$(GO) fmt ./...
+	cargo fmt
 
-vet: $(ASSETS)
-	$(GO) vet ./...
-
-lint: fmt vet
+lint: fmt
 
 test: $(ASSETS)
-	$(GO) test ./... -race -cover -timeout=10s
+	cargo test
 
 bench: $(ASSETS)
-	$(GO) test ./... -bench=.
+	cargo bench
 
 check: lint test bench
 
 clean:
-	rm -f coverage.txt
-	-chmod -R +w $(BUILD_DIR)
-	rm -rf $(BUILD_DIR)
-	rm -f $(PROTOS)
-
-coverage.txt:
-	touch coverage.txt
-	for pkg in $(shell go list ./... | grep -v vendor | grep -v go:); do \
-		$(GO) test -race -coverprofile=profile.out -covermode=atomic "$$pkg"; \
-			touch profile.out ; \
-			cat profile.out >> coverage.txt ; \
-			rm profile.out ; \
-	done
+	cargo clean
+	rm -rf target/
+	rm -rf build/
+	rm -f duplicates.html checksums.txt output.html rmlist.txt
 
 presubmit: clean check all coverage.txt
 
 run:
-	go run cmd/unique/unique.go -path=$(PWD) -verbose=true -output=report.html
+	cargo run -- duplicate --path=$(PWD) --verbose=true --output=report.html
 
-run2:
-	go run cmd/unique2/unique2.go -path=$(PWD) -verbose=true -output=report.html
-
-.PHONY: all deps fmt vet lint test bench check clean presubmit
+.PHONY: all deps fmt lint test bench check clean presubmit

@@ -12,36 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+FROM --platform=$BUILDPLATFORM gcr.io/distroless/cc
 
-# Test binary, build with `go test -c`
-*.test
+ARG BINARY_PATH
 
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
-coverage.txt
+WORKDIR /app/
 
-*.pem
-*.backup
+COPY --chown=nonroot $BINARY_PATH /app/filetool
+COPY --chown=nonroot LICENSE /app/LICENSE
 
-output.html
-duplicates.html
-
-dist/
-testdata/autogen/
-.vscode/
-build/
-
-*.cert
-*.key
-
-.vscode/
-target/
-
-checksums.txt
-rmlist.txt
+ENTRYPOINT ["/app/filetool"]
