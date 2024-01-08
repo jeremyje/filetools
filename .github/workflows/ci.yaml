@@ -122,6 +122,9 @@ jobs:
           org.opencontainers.image.source=${{ github.event.repository.clone_url }}
           org.opencontainers.image.created=${{ steps.get_version.outputs.build_timestamp }}
           org.opencontainers.image.revision=${{ github.sha }}
+    
+    - name: Cleanup
+      run: rm -f cobertura.xml
 
     - name: Publish Crate
       if: startsWith(github.ref, 'refs/tags/')
