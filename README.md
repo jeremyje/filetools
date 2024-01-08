@@ -34,3 +34,13 @@ Options:
   -V, --version
           Print version
 ```
+
+## Installation
+
+Linux
+
+`curl -o filetool -O -L https://github.com/jeremyje/filetools/releases/download/v0.1.0/filetool; chmod +x filetool`
+
+Windows
+
+`(New-Object System.Net.WebClient).DownloadFile("https://github.com/jeremyje/filetools/releases/download/v0.1.0/filetool.exe", "filetool.exe")`
