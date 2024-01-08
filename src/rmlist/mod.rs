@@ -42,7 +42,7 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
     for dir_path in &args.path {
         for line in std::fs::read_to_string(dir_path)?.lines() {
             match crate::common::fs::delete_file(line, args.dry_run) {
-                Ok(_) => {
+                Ok(()) => {
                     pb_detail.set_message(line.to_string());
                     num_files += 1;
                 }

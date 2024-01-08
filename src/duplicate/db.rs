@@ -18,11 +18,10 @@ use std::rc::Rc;
 
 use crate::common::fs::FileMetadata;
 
-/// DuplicateFileDB tracks potential duplicate files based on file sizes and checksums.
+/// `DuplicateFileDB` tracks potential duplicate files based on file sizes and checksums.
 #[derive(Debug)]
 pub(crate) struct DuplicateFileDB {
     pub(crate) m: HashMap<String, Rc<crate::common::fs::FileMetadata>>,
-    //by_size: HashMap<u64, Vec<Rc<crate::common::fs::FileMetadata>>>,
     by_size: HashMap<u64, HashMap<String, Rc<crate::common::fs::FileMetadata>>>,
 }
 
@@ -42,7 +41,7 @@ impl DuplicateFileDB {
         path.to_str().and_then(|p| self.m.get(p))
     }
 
-    /// put a FileMetadata record into this DB.
+    /// put a `FileMetadata` record into this DB.
     pub(crate) fn put(&mut self, mdp: &crate::common::fs::FileMetadata) {
         let md = mdp.clone();
         if let Some(path) = md.path.to_str().map(String::from) {
@@ -60,7 +59,7 @@ impl DuplicateFileDB {
         }
     }
 
-    /// put a FileMetadata record into this DB.
+    /// put a `FileMetadata` record into this DB.
     pub(crate) fn remove(&mut self, md: &crate::common::fs::FileMetadata) {
         if let Some(path) = md.path.to_str().map(String::from) {
             self.m.remove(&path);
@@ -70,7 +69,7 @@ impl DuplicateFileDB {
         }
     }
 
-    /// remove_unique_size removes entries that have unique sizes since they are guaranteed to be unique.
+    /// `remove_unique_size` removes entries that have unique sizes since they are guaranteed to be unique.
     pub(crate) fn remove_unique_size(&mut self) {
         let mut remove_size: Vec<u64> = Vec::new();
         let mut remove_md = Vec::new();
@@ -108,12 +107,11 @@ pub(crate) fn get_duplicates(
         let mut by_checksum: HashMap<&String, Vec<FileMetadata>> = HashMap::new();
         for file in files_with_same_size.1.values() {
             if let Some(checksum) = checksum_db.get(file) {
-                match by_checksum.get_mut(checksum) {
-                    Some(matches) => matches.push(file.deref().clone()),
-                    None => {
-                        let v = vec![file.deref().clone()];
-                        by_checksum.insert(checksum, v);
-                    }
+                if let Some(matches) = by_checksum.get_mut(checksum) {
+                    matches.push(file.deref().clone());
+                } else {
+                    let v = vec![file.deref().clone()];
+                    by_checksum.insert(checksum, v);
                 }
             }
         }

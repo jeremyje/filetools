@@ -67,9 +67,9 @@ pub(crate) fn worker_pool(
                 let hash_result = crate::common::checksum::xxhash_file(p.as_path());
                 match hash_result {
                     Ok(checksum_val) => match tx.send(FileChecksum::new(p, checksum_val)) {
-                        Ok(_) => {}
+                        Ok(()) => {}
                         Err(error) => {
-                            warn!("cannot send checksum, {error}")
+                            warn!("cannot send checksum, {error}");
                         }
                     },
                     Err(error) => println!("Cannot compute checksum of file, '{p:#?}' {error:?}"),

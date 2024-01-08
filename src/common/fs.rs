@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use log::{info, warn};
+use log::warn;
 use std::collections::HashSet;
 use std::fs;
 use std::io;
@@ -85,9 +85,6 @@ fn canonicalize_path_list<T: AsRef<Path>>(path_list: &[T]) -> io::Result<Vec<Pat
 /// assert_eq!(path_list, vec![&home, &usr])
 /// ```
 pub(crate) fn canonical_paths<T: AsRef<Path>>(path_list: &[T]) -> io::Result<Vec<PathBuf>> {
-    for p in path_list {
-        info!("scanning: {:#?}", p.as_ref())
-    }
     let canon_list = canonicalize_path_list(path_list)?;
     let opt_list = optimize_path_list(canon_list.as_slice());
     let mut result = Vec::new();

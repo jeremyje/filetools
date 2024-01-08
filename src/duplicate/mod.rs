@@ -77,10 +77,8 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
         let mut dup_db = DuplicateFileDB::new();
         let mut checksum_db = crate::common::db::FileChecksumDB::new();
         match checksum_db.load(&checksum_db_filepath) {
-            Ok(_) => {}
-            Err(error) => {
-                warn!("cannot load checksum file {checksum_db_filepath:#?}, {error}")
-            }
+            Ok(()) => {}
+            Err(error) => warn!("cannot load checksum file {checksum_db_filepath:#?}, {error}"),
         }
 
         pb_detail.set_prefix("Scan");
@@ -106,7 +104,7 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
             if checksum_db.get(md).is_none() {
                 hash_tx.send(md.path.clone()).unwrap();
                 require_checksum += 1;
-                require_checksum_size += md.size
+                require_checksum_size += md.size;
             }
         }
         drop(hash_tx);
@@ -137,25 +135,21 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
                 num_hash += 1;
                 if num_hash % hash_batch_size == 0 {
                     match checksum_db.write(&checksum_db_filepath) {
-                        Ok(_) => {
-                            pb_checksum_bar
-                                .set_message(format!("{num_hash}/{require_checksum} checksums"));
-                        }
-                        Err(error) => {
-                            warn!(
+                        Ok(()) => pb_checksum_bar
+                                .set_message(format!("{num_hash}/{require_checksum} checksums")),
+                        Err(error) =>  warn!(
                                 "cannot save checksums to db '{checksum_db_filepath:#?}', error:{error}"
-                            )
-                        }
+                            ),
                     }
                 }
             } else {
-                warn!("'{p:#?}' has no entry in dup_db.")
+                warn!("'{p:#?}' has no entry in dup_db.");
             }
         }
         match checksum_db.write(&checksum_db_filepath) {
-            Ok(_) => {}
+            Ok(()) => {}
             Err(error) => {
-                warn!("cannot save checksums to db '{checksum_db_filepath:#?}', error:{error}")
+                warn!("cannot save checksums to db '{checksum_db_filepath:#?}', error:{error}");
             }
         }
         pb_checksum_bar.finish_with_message("Done");
@@ -192,13 +186,13 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
                         warn!("rmlist {delete_file_path:#?}");
                         if let Some(path_str) = delete_file.path.to_str() {
                             match writer.write_all(path_str.as_bytes()) {
-                                Ok(_) => {}
+                                Ok(()) => {}
                                 Err(error) => {
                                     warn!("cannot write line to rmlist '{rmlist_path:#?}' file, error: {error}");
                                 }
                             }
                             match writer.write_all("\n".as_bytes()) {
-                                Ok(_) => {}
+                                Ok(()) => {}
                                 Err(error) => {
                                     warn!("cannot write line to rmlist '{rmlist_path:#?}' file, error: {error}");
                                 }
@@ -222,7 +216,7 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
             pb_detail.set_message(format!("{file_path} ({size})"));
             pb_delete_bar.inc(1);
             match crate::common::fs::delete_file(file_path, dry_run) {
-                Ok(_) => {}
+                Ok(()) => {}
                 Err(error) => warn!("failed to delete file {file_path}, error: {error}"),
             }
             delete_size += delete_file.size;
@@ -267,7 +261,7 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
             pb_detail.set_message(format!("Cannot save report to {output_file} because it already exists, to forcefully overwrite the file use, --overwrite=true"));
         } else {
             match report::html_file(&output_file, &report_title, &dups) {
-                Ok(_) => {
+                Ok(()) => {
                     pb_title.finish_with_message(format!(
                         "Found {num_dups} ({dup_size_str}) duplicates from {files_scanned} files, {num_delete} ({delete_size_str}) were {deleted_text}. See {output_file}"
                     ));
@@ -297,7 +291,7 @@ fn get_report_title(path_list: &Vec<std::path::PathBuf>) -> String {
     } else {
         let path_str_list: Vec<String> = path_list
             .iter()
-            .flat_map(|p| p.to_str())
+            .filter_map(|p| p.to_str())
             .map(String::from)
             .collect();
         path_str_list.join(",")

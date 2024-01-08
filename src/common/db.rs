@@ -20,7 +20,7 @@ use super::fs::FileMetadata;
 
 static CHECKSUM_FILE_DELIMITER: &str = "%";
 
-/// FileChecksumDB tracks checksums of files.
+/// `FileChecksumDB` tracks checksums of files.
 #[derive(Debug)]
 pub(crate) struct FileChecksumDB {
     m: HashMap<String, String>,
@@ -32,7 +32,7 @@ impl FileChecksumDB {
         Self { m: HashMap::new() }
     }
 
-    /// put a FileMetadata record into this DB.
+    /// put a `FileMetadata` record into this DB.
     pub(crate) fn put(&mut self, md: &crate::common::fs::FileMetadata, checksum: &str) {
         if let Some(key) = md.to_key() {
             let val = String::from(checksum);

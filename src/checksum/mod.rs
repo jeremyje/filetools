@@ -50,9 +50,9 @@ pub(crate) fn run(args: &Args) -> std::io::Result<()> {
 
         let mut checksum_db = crate::common::db::FileChecksumDB::new();
         match checksum_db.load(&checksum_db_filepath) {
-            Ok(_) => {}
+            Ok(()) => {}
             Err(error) => {
-                warn!("cannot load checksum file {checksum_db_filepath:#?}, {error}")
+                warn!("cannot load checksum file {checksum_db_filepath:#?}, {error}");
             }
         }
         let mut m = HashMap::new();
@@ -61,7 +61,7 @@ pub(crate) fn run(args: &Args) -> std::io::Result<()> {
         for md in path_rx {
             if checksum_db.get(&md).is_none() {
                 if let Some(path) = md.path.to_str().map(String::from) {
-                    pb_detail.set_message(path.to_owned());
+                    pb_detail.set_message(path.clone());
                     pb_checksum_bar.inc_length(1);
                     hash_tx.send(md.path.clone()).unwrap();
                     m.insert(path, md);
