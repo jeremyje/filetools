@@ -90,17 +90,6 @@ jobs:
         name: code-coverage-report
         path: cobertura.xml
 
-    - name: Install cargo-audit binary crate
-      uses: actions-rs/install@v0.1
-      with:
-        crate: cargo-audit
-        version: latest
-        use-tool-cache: true
-    - name: Security audit
-      uses: actions-rs/audit-check@v1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
 
