@@ -14,7 +14,7 @@
 
 use log::warn;
 
-pub fn worker_consumer<T, R, F>(
+pub(crate) fn worker_consumer<T, R, F>(
     name: &str,
     max_workers: usize,
     tx: crossbeam_channel::Sender<T>,

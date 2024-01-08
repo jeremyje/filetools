@@ -19,37 +19,37 @@ mod db;
 mod report;
 
 #[derive(clap::Args)]
-pub struct Args {
+pub(crate) struct Args {
     /// List of paths to scan.
     #[arg(long, default_value = ".")]
-    pub path: Vec<std::path::PathBuf>,
+    pub(crate) path: Vec<std::path::PathBuf>,
     /// Minimum size of file to consider while scanning.
     #[arg(long, default_value_t = 0)]
-    pub min_size: u64,
+    pub(crate) min_size: u64,
     /// List of patterns that match files that should be deleted if they are in a group of duplicates.
     #[arg(long, default_value = "")]
-    pub delete_pattern: Vec<String>,
+    pub(crate) delete_pattern: Vec<String>,
     /// If false, will perform the delete based on the pattern filtering provided by --delete_pattern.
     #[arg(long, default_value_t = true)]
-    pub dry_run: std::primitive::bool,
+    pub(crate) dry_run: std::primitive::bool,
     /// Path of where the duplicate file report will be written.
     #[arg(long, default_value = "duplicates.html")]
-    pub output: String,
+    pub(crate) output: String,
     /// If true, if an existing report already exists it will be overwritten.
     #[arg(long, default_value_t = true)]
-    pub overwrite: std::primitive::bool,
+    pub(crate) overwrite: std::primitive::bool,
     /// Path of where the checksum db is stored. This file makes subsequent runs much faster.
     #[arg(long, default_value = "checksums.txt")]
-    pub db: std::path::PathBuf,
+    pub(crate) db: std::path::PathBuf,
     /// Path where the file list of all duplicates that should be deleted are recorded.
     #[arg(long, default_value = "rmlist.txt")]
-    pub rmlist: std::path::PathBuf,
+    pub(crate) rmlist: std::path::PathBuf,
     /// Number of threads for calculating checksums.
     #[arg(long, default_value_t = 2)]
-    pub checksum_threads: usize,
+    pub(crate) checksum_threads: usize,
 }
 
-pub fn run(args: &Args) -> io::Result<()> {
+pub(crate) fn run(args: &Args) -> io::Result<()> {
     let (path_tx, path_rx) = crossbeam_channel::unbounded();
     let (hash_tx, hash_rx) = crossbeam_channel::unbounded();
     let (hash_result_tx, hash_result_rx) =

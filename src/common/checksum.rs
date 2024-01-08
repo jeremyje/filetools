@@ -20,7 +20,7 @@ use std::io::{BufReader, Read};
 use std::path::Path;
 use twox_hash::XxHash64;
 
-pub fn xxhash_file(file_path: &Path) -> io::Result<String> {
+pub(crate) fn xxhash_file(file_path: &Path) -> io::Result<String> {
     let input = File::open(file_path)?;
     let reader = BufReader::new(input);
     let digest = xxhash_buffer(reader)?;

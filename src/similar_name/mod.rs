@@ -19,23 +19,23 @@ use std::path::PathBuf;
 use std::thread;
 
 #[derive(clap::Args)]
-pub struct Args {
+pub(crate) struct Args {
     /// List of directory paths to scan for similarly named files.
     #[arg(long, default_value = ".")]
-    pub path: Vec<std::path::PathBuf>,
+    pub(crate) path: Vec<std::path::PathBuf>,
     /// Substrings that are ignored in file names to determine if a file is similar.
     /// Example: --clear-tokens=(1) will match "image.jpg" and "image (1).jpg" since the space and "(1)" are ignored.
     #[arg(long, default_value = "")]
-    pub clear_tokens: Vec<String>,
+    pub(crate) clear_tokens: Vec<String>,
     /// Minimum size of file to consider while scanning.
     #[arg(long, default_value_t = 0)]
-    pub min_size: i64,
+    pub(crate) min_size: i64,
     /// Includes the size of the file when reporting.
     #[arg(long, default_value_t = false)]
-    pub include_size: std::primitive::bool,
+    pub(crate) include_size: std::primitive::bool,
 }
 
-pub fn run(args: &Args) -> io::Result<()> {
+pub(crate) fn run(args: &Args) -> io::Result<()> {
     let (path_tx, path_rx) = crossbeam_channel::unbounded();
     let walk_thread = crate::common::fs::threaded_walk_dir(args.path.as_slice(), path_tx)?;
 
