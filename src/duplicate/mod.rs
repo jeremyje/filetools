@@ -113,16 +113,7 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
         let require_checksum_size_str = crate::common::util::human_size(require_checksum_size);
         pb_title.set_message(format!("{num_candidates} of {files_scanned} files are possible duplicates, calculating {require_checksum} checksums ({require_checksum_size_str})..."));
 
-        let hash_batch_size = if num_candidates == 0 {
-            100
-        } else {
-            let max_batch_size = num_candidates / 500;
-            if max_batch_size > 100 {
-                max_batch_size
-            } else {
-                100
-            }
-        };
+        let hash_batch_size = get_batch_size(num_candidates);
         pb_detail.set_prefix("Checksum");
         let mut num_hash = 0;
         for hash_result in hash_result_rx {
@@ -311,9 +302,32 @@ fn match_file(path: &std::path::Path, delete_pattern: &Vec<String>) -> bool {
     false
 }
 
+fn get_batch_size(num_candidates: usize) -> usize {
+    if num_candidates == 0 {
+        100
+    } else {
+        let max_batch_size = num_candidates / 500;
+        if max_batch_size > 100 {
+            max_batch_size
+        } else {
+            100
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_get_batch_size() {
+        assert_eq!(get_batch_size(0), 100);
+        assert_eq!(get_batch_size(100), 100);
+        assert_eq!(get_batch_size(200), 100);
+        assert_eq!(get_batch_size(125000), 250);
+        assert_eq!(get_batch_size(1500000), 3000);
+        assert_eq!(get_batch_size(1250), 100);
+    }
 
     #[test]
     fn run_test() {
