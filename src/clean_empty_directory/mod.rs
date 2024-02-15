@@ -15,7 +15,7 @@
 use indicatif::ProgressBar;
 use log::warn;
 
-#[derive(clap::Args)]
+#[derive(clap::Args, Clone)]
 pub(crate) struct Args {
     /// List of directories that will be scanned to be removed if empty.
     #[arg(long, default_value = ".")]
@@ -34,14 +34,14 @@ pub(crate) fn run(args: &Args) -> std::io::Result<()> {
     pb_title.set_prefix("Clean Empty Directories");
     pb_title.set_message("Scanning...");
     for path in crate::common::fs::canonical_paths(args.path.as_slice())? {
-        let dry_run = args.dry_run;
+        let args = args.clone();
         let path_str = path.to_str().map_or(String::from("unknown"), String::from);
 
         let pb_detail = pb_detail.clone();
         let handle = std::thread::Builder::new()
             .name(format!("clean-{path_str}"))
             .spawn(
-                move || match clean_empty_directory(&pb_detail, &path, dry_run) {
+                move || match clean_empty_directory(&pb_detail, &path, args.dry_run) {
                     Ok(_) => {}
                     Err(error) => {
                         warn!("got error {error}");
