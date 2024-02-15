@@ -18,7 +18,7 @@ use std::io;
 use std::path::PathBuf;
 use std::thread;
 
-#[derive(clap::Args)]
+#[derive(clap::Args, Clone)]
 pub(crate) struct Args {
     /// List of directory paths to scan for similarly named files.
     #[arg(long, default_value = ".")]
@@ -39,7 +39,7 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
     let (path_tx, path_rx) = crossbeam_channel::unbounded();
     let walk_thread = crate::common::fs::threaded_walk_dir(args.path.as_slice(), path_tx)?;
 
-    let clear_tokens = args.clear_tokens.clone();
+    let args = args.clone();
     let hash_handle = thread::spawn(move || {
         let mut files: HashMap<String, HashMap<PathBuf, FileMetadata>> = HashMap::new();
         for md in path_rx {
@@ -47,7 +47,7 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
             println!("File Path: {path:#?}");
             if let Some(file_name) = path.file_name() {
                 if let Some(file_name_str) = file_name.to_str() {
-                    let reduced_name = reduce_name(file_name_str, &clear_tokens);
+                    let reduced_name = reduce_name(file_name_str, &args.clear_tokens);
                     if let Some(m) = files.get_mut(&reduced_name) {
                         m.insert(md.path.clone(), md);
                     } else {

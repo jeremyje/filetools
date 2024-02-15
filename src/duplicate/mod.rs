@@ -18,7 +18,7 @@ use std::io::{self, Write};
 mod db;
 mod report;
 
-#[derive(clap::Args)]
+#[derive(clap::Args, Clone)]
 pub(crate) struct Args {
     /// List of paths to scan.
     #[arg(long, default_value = ".")]
@@ -65,27 +65,25 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
     pb_title.set_message("Scanning Files...");
     let delete_pattern = args.delete_pattern.clone();
 
+    let args = args.clone();
     let report_title = get_report_title(&args.path);
     let walk_join = crate::common::fs::threaded_walk_dir(&args.path, path_tx)?;
-    let output_file = args.output.clone();
-    let checksum_db_filepath = args.db.clone();
-    let min_size = args.min_size;
-    let overwrite = args.overwrite;
-    let dry_run = args.dry_run;
-    let rmlist_path = args.rmlist.clone();
     let duplicate_thread = std::thread::spawn(move || {
         let mut dup_db = DuplicateFileDB::new();
         let mut checksum_db = crate::common::db::FileChecksumDB::new();
-        match checksum_db.load(&checksum_db_filepath) {
+        match checksum_db.load(&args.db) {
             Ok(()) => {}
-            Err(error) => warn!("cannot load checksum file {checksum_db_filepath:#?}, {error}"),
+            Err(error) => warn!(
+                "cannot load checksum file {checksum_db_filepath:#?}, {error}",
+                checksum_db_filepath = args.db
+            ),
         }
 
         pb_detail.set_prefix("Scan");
         let mut files_scanned = 0;
         for md in path_rx {
             files_scanned += 1;
-            if md.size >= min_size {
+            if md.size >= args.min_size {
                 pb_detail.set_message(format!("[{files_scanned}] {:#?}", md.path));
                 dup_db.put(&md);
             }
@@ -125,22 +123,25 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
                 checksum_db.put(dup_val, checksum);
                 num_hash += 1;
                 if num_hash % hash_batch_size == 0 {
-                    match checksum_db.write(&checksum_db_filepath) {
+                    match checksum_db.write(&args.db) {
                         Ok(()) => pb_checksum_bar
                                 .set_message(format!("{num_hash}/{require_checksum} checksums")),
                         Err(error) =>  warn!(
                                 "cannot save checksums to db '{checksum_db_filepath:#?}', error:{error}"
-                            ),
+                            ,checksum_db_filepath=args.db),
                     }
                 }
             } else {
                 warn!("'{p:#?}' has no entry in dup_db.");
             }
         }
-        match checksum_db.write(&checksum_db_filepath) {
+        match checksum_db.write(&args.db) {
             Ok(()) => {}
             Err(error) => {
-                warn!("cannot save checksums to db '{checksum_db_filepath:#?}', error:{error}");
+                warn!(
+                    "cannot save checksums to db '{checksum_db_filepath:#?}', error:{error}",
+                    checksum_db_filepath = args.db
+                );
             }
         }
         pb_checksum_bar.finish_with_message("Done");
@@ -169,7 +170,7 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
             .expect("cannot convert len to u64.");
 
         if !delete_files.is_empty() {
-            match std::fs::File::create(&rmlist_path) {
+            match std::fs::File::create(&args.rmlist) {
                 Ok(file) => {
                     let mut writer = std::io::LineWriter::new(file);
                     for delete_file in &delete_files {
@@ -179,20 +180,23 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
                             match writer.write_all(path_str.as_bytes()) {
                                 Ok(()) => {}
                                 Err(error) => {
-                                    warn!("cannot write line to rmlist '{rmlist_path:#?}' file, error: {error}");
+                                    warn!("cannot write line to rmlist '{rmlist_path:#?}' file, error: {error}", rmlist_path=args.rmlist);
                                 }
                             }
                             match writer.write_all("\n".as_bytes()) {
                                 Ok(()) => {}
                                 Err(error) => {
-                                    warn!("cannot write line to rmlist '{rmlist_path:#?}' file, error: {error}");
+                                    warn!("cannot write line to rmlist '{rmlist_path:#?}' file, error: {error}", rmlist_path=args.rmlist);
                                 }
                             }
                         }
                     }
                 }
                 Err(error) => {
-                    warn!("cannot write rmlist '{rmlist_path:#?}' file, error: {error}");
+                    warn!(
+                        "cannot write rmlist '{rmlist_path:#?}' file, error: {error}",
+                        rmlist_path = args.rmlist
+                    );
                 }
             }
         }
@@ -206,7 +210,7 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
             let size = crate::common::util::human_size(delete_file.size);
             pb_detail.set_message(format!("{file_path} ({size})"));
             pb_delete_bar.inc(1);
-            match crate::common::fs::delete_file(file_path, dry_run) {
+            match crate::common::fs::delete_file(file_path, args.dry_run) {
                 Ok(()) => {}
                 Err(error) => warn!("failed to delete file {file_path}, error: {error}"),
             }
@@ -237,10 +241,10 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
             trace!("------------------------------------");
         }
 
-        let orig = std::path::Path::new(&output_file);
+        let orig = std::path::Path::new(&args.output);
         let dup_size_str = crate::common::util::human_size(dup_size);
 
-        let deleted_text = if dry_run {
+        let deleted_text = if args.dry_run {
             "deleted (dry run)"
         } else {
             "deleted"
@@ -250,19 +254,20 @@ pub(crate) fn run(args: &Args) -> io::Result<()> {
             "Found {num_dups} ({dup_size_str}) duplicates from {files_scanned} files, {num_delete} ({delete_size_str}) were {deleted_text}."
         ));
         pb_detail.set_message("Writing report...");
-        if orig.is_file() && !overwrite {
-            pb_detail.set_message(format!("Cannot save report to {output_file} because it already exists, to forcefully overwrite the file use, --overwrite=true"));
+        if orig.is_file() && !args.overwrite {
+            pb_detail.set_message(format!("Cannot save report to {output_file} because it already exists, to forcefully overwrite the file use, --overwrite=true", output_file=args.output));
         } else {
-            match report::html_file(&output_file, &report_title, &dups) {
+            match report::html_file(&args.output, &report_title, &dups) {
                 Ok(()) => {
                     pb_title.finish_with_message(format!(
                         "Found {num_dups} ({dup_size_str}) duplicates from {files_scanned} files, {num_delete} ({delete_size_str}) were {deleted_text}. See {output_file}"
-                    ));
+                        , output_file=args.output));
                     pb_detail.finish_and_clear();
                 }
                 Err(error) => {
                     pb_detail.set_message(format!(
-                        "cannot write report to '{output_file}', error: {error}"
+                        "cannot write report to '{output_file}', error: {error}",
+                        output_file = args.output
                     ));
                 }
             }
