@@ -105,11 +105,11 @@ mod tests {
     use std::fs;
     use std::path::Path;
     use std::path::PathBuf;
-    use tempdir::TempDir;
+    use tempfile::tempdir;
 
     #[test]
     fn clean_empty_directory_remove_all() {
-        let tmp_dir = TempDir::new("clean_dir").expect("create directory");
+        let tmp_dir = tempdir().expect("create directory");
         fs::create_dir_all(Path::join(tmp_dir.path(), "1/2/3/4/5/6")).expect("create directory");
         fs::create_dir_all(Path::join(tmp_dir.path(), "2/3/4/5/6")).expect("create directory");
         fs::create_dir_all(Path::join(tmp_dir.path(), "3/4/5/6")).expect("create directory");
@@ -133,7 +133,7 @@ mod tests {
 
     #[test]
     fn clean_empty_directory_remove_some() {
-        let tmp_dir = TempDir::new("clean_dir").expect("create directory");
+        let tmp_dir = tempdir().expect("create directory");
         fs::create_dir_all(Path::join(tmp_dir.path(), "1/2/3/4/5/6")).expect("create directory");
         fs::create_dir_all(Path::join(tmp_dir.path(), "2/3/4/5/6")).expect("create directory");
         fs::write(Path::join(tmp_dir.path(), "1/2/3/4.txt"), b"4").expect("write file");
