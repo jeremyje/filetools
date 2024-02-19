@@ -17,6 +17,7 @@ use log::{trace, warn};
 use std::io::{self, Write};
 mod db;
 mod report;
+use clap_verbosity_flag::Verbosity;
 
 #[derive(clap::Args, Clone)]
 pub(crate) struct Args {
@@ -49,13 +50,13 @@ pub(crate) struct Args {
     pub(crate) checksum_threads: usize,
 }
 
-pub(crate) fn run(args: &Args) -> io::Result<()> {
+pub(crate) fn run(args: &Args, verbose: &Verbosity) -> io::Result<()> {
     let (path_tx, path_rx) = crossbeam_channel::unbounded();
     let (hash_tx, hash_rx) = crossbeam_channel::unbounded();
     let (hash_result_tx, hash_result_rx) =
         crossbeam_channel::unbounded::<crate::common::checksum::FileChecksum>();
 
-    let progress_factory = crate::common::progress::ProgressFactory::new();
+    let progress_factory = crate::common::progress::ProgressFactory::new(verbose);
     let pb_title = progress_factory.create_title();
     let pb_detail = progress_factory.create_detail();
     let pb_checksum_bar = progress_factory.create_bar();
@@ -347,6 +348,6 @@ mod tests {
             rmlist: std::path::PathBuf::from("rmlist.txt"),
             checksum_threads: 2,
         };
-        run(&args).unwrap();
+        run(&args, &Verbosity::new(0, 0)).unwrap();
     }
 }

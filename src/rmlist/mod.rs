@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use clap_verbosity_flag::Verbosity;
 use std::io;
 
 #[derive(clap::Args)]
@@ -24,8 +25,8 @@ pub(crate) struct Args {
     pub(crate) dry_run: std::primitive::bool,
 }
 
-pub(crate) fn run(args: &Args) -> io::Result<()> {
-    let progress_factory = crate::common::progress::ProgressFactory::new();
+pub(crate) fn run(args: &Args, verbose: &Verbosity) -> io::Result<()> {
+    let progress_factory = crate::common::progress::ProgressFactory::new(verbose);
     let pb_title = progress_factory.create_title();
     let pb_detail = progress_factory.create_detail();
 

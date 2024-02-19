@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use clap_verbosity_flag::Verbosity;
 use indicatif::ProgressBar;
 use log::warn;
 
@@ -25,8 +26,8 @@ pub(crate) struct Args {
     pub(crate) dry_run: std::primitive::bool,
 }
 
-pub(crate) fn run(args: &Args) -> std::io::Result<()> {
-    let progress_factory = crate::common::progress::ProgressFactory::new();
+pub(crate) fn run(args: &Args, verbose: &Verbosity) -> std::io::Result<()> {
+    let progress_factory = crate::common::progress::ProgressFactory::new(verbose);
     let mut threads = Vec::new();
     let pb_title = progress_factory.create_title();
     let pb_detail = progress_factory.create_detail();
@@ -116,17 +117,23 @@ mod tests {
         fs::create_dir_all(Path::join(tmp_dir.path(), "4/5/6")).expect("create directory");
         fs::create_dir_all(Path::join(tmp_dir.path(), "5/6")).expect("create directory");
         fs::create_dir_all(Path::join(tmp_dir.path(), "6")).expect("create directory");
-        run(&Args {
-            path: vec![PathBuf::from(tmp_dir.path())],
-            dry_run: true,
-        })
+        run(
+            &Args {
+                path: vec![PathBuf::from(tmp_dir.path())],
+                dry_run: true,
+            },
+            &Verbosity::new(0, 0),
+        )
         .expect("clean_empty_directories");
         assert!(Path::join(tmp_dir.path(), "1/2/3/4/5/6").exists());
 
-        run(&Args {
-            path: vec![PathBuf::from(tmp_dir.path())],
-            dry_run: false,
-        })
+        run(
+            &Args {
+                path: vec![PathBuf::from(tmp_dir.path())],
+                dry_run: false,
+            },
+            &Verbosity::new(0, 0),
+        )
         .expect("clean_empty_directories");
         assert_eq!(tmp_dir.path().exists(), false);
     }
@@ -137,20 +144,26 @@ mod tests {
         fs::create_dir_all(Path::join(tmp_dir.path(), "1/2/3/4/5/6")).expect("create directory");
         fs::create_dir_all(Path::join(tmp_dir.path(), "2/3/4/5/6")).expect("create directory");
         fs::write(Path::join(tmp_dir.path(), "1/2/3/4.txt"), b"4").expect("write file");
-        run(&Args {
-            path: vec![PathBuf::from(tmp_dir.path())],
-            dry_run: true,
-        })
+        run(
+            &Args {
+                path: vec![PathBuf::from(tmp_dir.path())],
+                dry_run: true,
+            },
+            &Verbosity::new(0, 0),
+        )
         .expect("clean_empty_directories");
         assert!(tmp_dir.path().exists());
         assert!(Path::join(tmp_dir.path(), "1/2/3/4/5/6").exists());
         assert!(Path::join(tmp_dir.path(), "2").exists());
         assert!(Path::join(tmp_dir.path(), "1/2/3/4.txt").exists());
 
-        run(&Args {
-            path: vec![PathBuf::from(tmp_dir.path())],
-            dry_run: false,
-        })
+        run(
+            &Args {
+                path: vec![PathBuf::from(tmp_dir.path())],
+                dry_run: false,
+            },
+            &Verbosity::new(0, 0),
+        )
         .expect("clean_empty_directories");
 
         assert!(tmp_dir.path().exists());

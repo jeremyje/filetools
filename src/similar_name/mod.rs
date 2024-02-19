@@ -13,6 +13,10 @@
 // limitations under the License.
 
 use crate::common::fs::FileMetadata;
+use clap_verbosity_flag::Verbosity;
+use crossbeam_channel::Receiver;
+use indicatif::ProgressBar;
+use log::info;
 use std::collections::HashMap;
 use std::io;
 use std::path::PathBuf;
@@ -35,41 +39,55 @@ pub(crate) struct Args {
     pub(crate) include_size: std::primitive::bool,
 }
 
-pub(crate) fn run(args: &Args) -> io::Result<()> {
+pub(crate) fn run(args: &Args, verbose: &Verbosity) -> io::Result<()> {
     let (path_tx, path_rx) = crossbeam_channel::unbounded();
     let walk_thread = crate::common::fs::threaded_walk_dir(args.path.as_slice(), path_tx)?;
 
-    let args = args.clone();
+    let progress_factory = crate::common::progress::ProgressFactory::new(verbose);
+    let pb_title = progress_factory.create_title();
+    let pb_detail = progress_factory.create_detail();
+    pb_title.set_prefix("Similar Name");
+    pb_title.set_message("Scanning...");
+
+    let args_for_thread = args.clone();
+    let pb_detail_for_thread = pb_detail.clone();
     let hash_handle = thread::spawn(move || {
-        let mut files: HashMap<String, HashMap<PathBuf, FileMetadata>> = HashMap::new();
-        for md in path_rx {
-            let path = md.path.as_path();
-            println!("File Path: {path:#?}");
-            if let Some(file_name) = path.file_name() {
-                if let Some(file_name_str) = file_name.to_str() {
-                    let reduced_name = reduce_name(file_name_str, &args.clear_tokens);
-                    if let Some(m) = files.get_mut(&reduced_name) {
-                        m.insert(md.path.clone(), md);
-                    } else {
-                        let mut m = HashMap::new();
-                        m.insert(md.path.clone(), md);
-                        files.insert(reduced_name, m);
-                    }
-                }
-            }
-        }
-        for (k, v) in files {
-            if v.len() > 1 {
-                println!("Group: {k}");
-            } else {
-                println!("NOT Group: {k}");
-            }
-        }
+        similar_name(&args_for_thread, path_rx, &pb_detail_for_thread);
     });
 
     walk_thread();
     hash_handle.join().unwrap();
+
+    pb_title.set_message("Done");
+    pb_detail.finish_and_clear();
     Ok(())
+}
+
+fn similar_name(args: &Args, path_rx: Receiver<FileMetadata>, pb_detail: &ProgressBar) {
+    let mut files: HashMap<String, HashMap<PathBuf, FileMetadata>> = HashMap::new();
+    for md in path_rx {
+        let path = md.path.as_path();
+        pb_detail.set_message("{path:#?}");
+        if let Some(file_name) = path.file_name() {
+            if let Some(file_name_str) = file_name.to_str() {
+                let reduced_name = reduce_name(file_name_str, &args.clear_tokens);
+                if let Some(m) = files.get_mut(&reduced_name) {
+                    m.insert(md.path.clone(), md);
+                } else {
+                    let mut m = HashMap::new();
+                    m.insert(md.path.clone(), md);
+                    files.insert(reduced_name, m);
+                }
+            }
+        }
+    }
+    for (k, v) in files {
+        if v.len() > 1 {
+            info!("Group: {k}");
+        } else {
+            info!("NOT Group: {k}");
+        }
+    }
 }
 
 fn reduce_name(name: &str, clear_tokens: &Vec<String>) -> String {
@@ -83,6 +101,22 @@ fn reduce_name(name: &str, clear_tokens: &Vec<String>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn similar_name() {
+        let tmp_dir = tempdir().expect("create directory");
+        run(
+            &Args {
+                path: vec![PathBuf::from(tmp_dir.path())],
+                clear_tokens: vec![],
+                min_size: 0,
+                include_size: true,
+            },
+            &Verbosity::new(0, 0),
+        )
+        .expect("similar name");
+    }
 
     #[test]
     fn test_reduce_name() {
