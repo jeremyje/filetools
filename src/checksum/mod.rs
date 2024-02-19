@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use clap_verbosity_flag::Verbosity;
 use log::warn;
 use std::collections::HashMap;
 
@@ -27,8 +28,8 @@ pub(crate) struct Args {
     pub(crate) checksum_threads: usize,
 }
 
-pub(crate) fn run(args: &Args) -> std::io::Result<()> {
-    let progress_factory = crate::common::progress::ProgressFactory::new();
+pub(crate) fn run(args: &Args, verbose: &Verbosity) -> std::io::Result<()> {
+    let progress_factory = crate::common::progress::ProgressFactory::new(verbose);
     let pb_title = progress_factory.create_title();
     let pb_detail = progress_factory.create_detail();
     let pb_checksum_bar = progress_factory.create_bar();
@@ -107,6 +108,6 @@ mod tests {
             output: std::path::PathBuf::from("checksums.txt"),
             checksum_threads: 2,
         };
-        run(&args).unwrap();
+        run(&args, &Verbosity::new(0, 0)).unwrap();
     }
 }

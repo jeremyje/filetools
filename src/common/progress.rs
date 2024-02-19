@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use clap_verbosity_flag::Verbosity;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use indicatif_log_bridge::LogWrapper;
 use log::warn;
+use log::Level;
 
 /// Creates a standard multi `ProgressBar` for filetool.
 pub(crate) struct ProgressFactory {
@@ -27,11 +29,13 @@ pub(crate) struct ProgressFactory {
 
 impl ProgressFactory {
     /// new creates a new duplicate file DB.
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(verbose: &Verbosity) -> Self {
         let multi_progress = MultiProgress::new();
-        let logger =
-            env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
-                .build();
+        let logger = env_logger::Builder::from_env(
+            env_logger::Env::default()
+                .default_filter_or(verbose.log_level().unwrap_or(Level::Info).as_str()),
+        )
+        .build();
         let log_wrapper = LogWrapper::new(multi_progress.clone(), logger);
         match log_wrapper.try_init() {
             Ok(()) => {}
@@ -85,7 +89,7 @@ mod tests {
 
     #[test]
     fn test_create_progress_bars() {
-        let factory = ProgressFactory::new();
+        let factory = ProgressFactory::new(&Verbosity::new(0, 0));
         let pb_title = factory.create_title();
         let pb_detail = factory.create_detail();
         let pb_bar = factory.create_bar();

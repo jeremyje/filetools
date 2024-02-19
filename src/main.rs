@@ -18,8 +18,8 @@ mod common;
 mod duplicate;
 mod rmlist;
 mod similar_name;
-
 use clap::{Parser, Subcommand};
+use clap_verbosity_flag::Verbosity;
 
 #[macro_use(concat_string)]
 extern crate concat_string;
@@ -33,7 +33,7 @@ struct Cli {
     #[command(subcommand)]
     command: Commands,
     #[command(flatten)]
-    verbose: clap_verbosity_flag::Verbosity,
+    verbose: Verbosity,
 }
 
 #[derive(Subcommand)]
@@ -53,10 +53,10 @@ enum Commands {
 fn main() -> std::io::Result<()> {
     let cli = Cli::parse();
     match &cli.command {
-        Commands::Checksum(args) => checksum::run(args),
-        Commands::CleanEmptyDirectory(args) => clean_empty_directory::run(args),
-        Commands::Duplicate(args) => duplicate::run(args),
-        Commands::Rmlist(args) => rmlist::run(args),
-        Commands::SimilarName(args) => similar_name::run(args),
+        Commands::Checksum(args) => checksum::run(args, &cli.verbose),
+        Commands::CleanEmptyDirectory(args) => clean_empty_directory::run(args, &cli.verbose),
+        Commands::Duplicate(args) => duplicate::run(args, &cli.verbose),
+        Commands::Rmlist(args) => rmlist::run(args, &cli.verbose),
+        Commands::SimilarName(args) => similar_name::run(args, &cli.verbose),
     }
 }
