@@ -183,9 +183,26 @@ pub(crate) fn delete_file<P: AsRef<Path>>(path: P, dry_run: bool) -> io::Result<
     Ok(())
 }
 
+#[allow(clippy::permissions_set_readonly_false)]
 pub(crate) fn delete_directory<P: AsRef<Path>>(path: P, dry_run: bool) -> io::Result<()> {
     if !dry_run {
-        fs::remove_dir(path)?;
+        let dir_path = PathBuf::from(path.as_ref());
+        match fs::remove_dir(path.as_ref()) {
+            Ok(result) => result,
+            Err(err) => {
+                match fs::metadata(path.as_ref()) {
+                    Ok(metadata) => {
+                        let mut perms = metadata.permissions();
+                        perms.set_readonly(false);
+                        return fs::remove_dir(path.as_ref());
+                    }
+                    Err(err) => {
+                        warn!("cannot change the permissions of {dir_path:#?} to make it deletable. Err= {err}");
+                    }
+                }
+                return Err(err);
+            }
+        }
     }
     Ok(())
 }
@@ -230,6 +247,7 @@ pub(crate) fn threaded_walk_dir<T: AsRef<Path>>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir;
 
     #[test]
     fn canonical_paths_test() {
@@ -323,5 +341,34 @@ mod tests {
         let result = optimize_path_list(input.as_slice());
 
         assert_eq!(result, want);
+    }
+
+    #[test]
+    fn test_delete_directory() {
+        let tmp_dir = tempdir().expect("create directory");
+
+        let readonly_dir = Path::join(tmp_dir.path(), "readonly");
+        fs::create_dir_all(readonly_dir.clone()).expect("create directory");
+        fs::metadata(readonly_dir.clone())
+            .expect("read metadata")
+            .permissions()
+            .set_readonly(true);
+
+        delete_directory(readonly_dir.clone(), true).expect("delete directory");
+        assert_eq!(readonly_dir.exists(), true);
+        delete_directory(readonly_dir.clone(), false).expect("delete directory");
+        assert_eq!(readonly_dir.exists(), false);
+
+        let readwrite_dir = Path::join(tmp_dir.path(), "readwrite");
+        fs::create_dir_all(readwrite_dir.clone()).expect("create directory");
+        fs::metadata(readwrite_dir.clone())
+            .expect("read metadata")
+            .permissions()
+            .set_readonly(false);
+
+        delete_directory(readwrite_dir.clone(), true).expect("delete directory");
+        assert_eq!(readwrite_dir.exists(), true);
+        delete_directory(readwrite_dir.clone(), false).expect("delete directory");
+        assert_eq!(readwrite_dir.exists(), false);
     }
 }
