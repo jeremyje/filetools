@@ -13,6 +13,8 @@
 // limitations under the License.
 
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use indicatif_log_bridge::LogWrapper;
+use log::warn;
 
 /// Creates a standard multi `ProgressBar` for filetool.
 pub(crate) struct ProgressFactory {
@@ -26,6 +28,17 @@ pub(crate) struct ProgressFactory {
 impl ProgressFactory {
     /// new creates a new duplicate file DB.
     pub(crate) fn new() -> Self {
+        let multi_progress = MultiProgress::new();
+        let logger =
+            env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+                .build();
+        let log_wrapper = LogWrapper::new(multi_progress.clone(), logger);
+        match log_wrapper.try_init() {
+            Ok(()) => {}
+            Err(err) => {
+                warn!("Cannot set global logger to indicatif-log-bridge. Error= {err}");
+            }
+        }
         Self {
             title_style: ProgressStyle::with_template(
                 "[{elapsed_precise}] {prefix:.bold.dim} {wide_msg}",
@@ -36,7 +49,7 @@ impl ProgressFactory {
                 .unwrap(),
             danger_bar_style: ProgressStyle::with_template("{wide_bar:60.red/white} {msg}")
                 .unwrap(),
-            multi_progress: MultiProgress::new(),
+            multi_progress,
         }
     }
 

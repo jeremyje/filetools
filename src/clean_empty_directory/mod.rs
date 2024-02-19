@@ -83,12 +83,18 @@ fn clean_empty_directory(
             }
         }
     }
-    let can_delete = !has_item;
+    let mut can_delete = !has_item;
     if can_delete {
         let dry_run_text = if dry_run { "DRY RUN" } else { "" };
         pb_detail.set_message(format!("{dry_run_text} {dir_path:#?}"));
         pb_detail.inc(1);
-        crate::common::fs::delete_directory(dir_path, dry_run)?;
+        match crate::common::fs::delete_directory(dir_path, dry_run) {
+            Ok(()) => {}
+            Err(err) => {
+                warn!("cannot delete {dir_path:#?} {err}");
+                can_delete = false;
+            }
+        }
     }
     Ok(can_delete)
 }
