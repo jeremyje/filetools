@@ -125,4 +125,13 @@ presubmit: clean check all coverage.txt
 run:
 	cargo run -- duplicate --path=$(PWD) --verbose=true --output=report.html
 
+# FROM=0.9.9 TO=1.0.0 make changever
+changever:
+	sed -i 's/$(FROM)/$(TO)/g' README.md
+	sed -i 's/version = \"$(FROM)\"/version = \"$(TO)\"/g' Cargo.toml
+	sed -i 's/$(FROM)/$(TO)/g' .github/workflows/ci.yaml
+	cargo update
+	cargo fmt
+	cargo build
+
 .PHONY: all deps fmt lint test bench check clean presubmit
