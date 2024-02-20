@@ -39,7 +39,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Canonicalizes file names.
+    /// Renames files to standard names. Typically this is renaming unusual file extensions.
     Canonical(canonical::Args),
     /// Calculates checksums (xxhash3-64bit) of files in selected directories.
     Checksum(checksum::Args),
