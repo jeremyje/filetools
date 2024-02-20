@@ -45,6 +45,7 @@ indicatif-log-bridge = "0.2.2"
 log = "0.4.20"
 more-asserts = "0.3.1"
 mp4 = "0.14.0"
+phf = { version = "0.11.2", features = ["macros"] }
 remove_dir_all = "0.8.2"
 ring = "0.17.5"
 serde = "1.0.193"
