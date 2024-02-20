@@ -176,6 +176,13 @@ pub(crate) fn walk_dir(
     Ok(())
 }
 
+pub(crate) fn move_file<P: AsRef<Path>>(from: P, to: P, dry_run: bool) -> io::Result<()> {
+    if !dry_run {
+        fs::rename(from, to)?;
+    }
+    Ok(())
+}
+
 pub(crate) fn delete_file<P: AsRef<Path>>(path: P, dry_run: bool) -> io::Result<()> {
     if !dry_run {
         fs::remove_file(path)?;

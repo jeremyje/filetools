@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod canonical;
 mod checksum;
 mod clean_empty_directory;
 mod common;
@@ -38,6 +39,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Canonicalizes file names.
+    Canonical(canonical::Args),
     /// Calculates checksums (xxhash3-64bit) of files in selected directories.
     Checksum(checksum::Args),
     /// Removes directories that do not contain any files.
@@ -53,6 +56,7 @@ enum Commands {
 fn main() -> std::io::Result<()> {
     let cli = Cli::parse();
     match &cli.command {
+        Commands::Canonical(args) => canonical::run(args, &cli.verbose),
         Commands::Checksum(args) => checksum::run(args, &cli.verbose),
         Commands::CleanEmptyDirectory(args) => clean_empty_directory::run(args, &cli.verbose),
         Commands::Duplicate(args) => duplicate::run(args, &cli.verbose),
