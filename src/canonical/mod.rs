@@ -36,7 +36,7 @@ pub(crate) struct Args {
     /// List of paths to scan.
     #[arg(long, default_value = ".")]
     pub(crate) path: Vec<std::path::PathBuf>,
-    /// If false, will perform the delete based on the pattern filtering provided by --delete_pattern.
+    /// If false, will perform the file name canonicalization.
     #[arg(long, default_value_t = true)]
     pub(crate) dry_run: std::primitive::bool,
 }
@@ -109,8 +109,6 @@ fn canonicalize_path(p: &Path) -> Option<PathBuf> {
 }
 
 fn canonicalize_filename(file_stem: &str, extension: &str) -> Option<PathBuf> {
-    //let extension_correction = HashMap::from([("jpeg", "jpg"), ("mp4", "m4v")]);
-    //if let Some(correction) = extension_correction.get(extension.to_lowercase().as_str()) {
     if let Some(correction) = EXTENSION_CORRECTIONS.get(extension.to_lowercase().as_str()) {
         let mut new_file_name = file_stem.to_string();
         new_file_name.push('.');
