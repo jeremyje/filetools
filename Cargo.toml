@@ -30,7 +30,7 @@ categories = ["command-line-utilities"]
 [dependencies]
 cargo-tarpaulin = "0.27.2"
 chrono = "0.4.31"
-clap = { version = "4.4.7", features = ["derive"] }
+clap = { version = "4.5.3", features = ["derive"] }
 clap-verbosity-flag = "2.1.0"
 concat-string = "1.0.1"
 crc = "3.0.1"
