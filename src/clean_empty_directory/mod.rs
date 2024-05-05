@@ -24,6 +24,9 @@ pub(crate) struct Args {
     /// If false, the directories will actually be deleted. By default dry run is enabled and will only report empty directories.
     #[arg(long, default_value_t = true)]
     pub(crate) dry_run: std::primitive::bool,
+    /// Force deletion of files when the read-only bit is set.
+    #[arg(long, default_value_t = false)]
+    pub(crate) force: bool,
 }
 
 pub(crate) fn run(args: &Args, verbose: &Verbosity) -> std::io::Result<()> {
@@ -41,14 +44,14 @@ pub(crate) fn run(args: &Args, verbose: &Verbosity) -> std::io::Result<()> {
         let pb_detail = pb_detail.clone();
         let handle = std::thread::Builder::new()
             .name(format!("clean-{path_str}"))
-            .spawn(
-                move || match clean_empty_directory(&pb_detail, &path, args.dry_run) {
+            .spawn(move || {
+                match clean_empty_directory(&pb_detail, &path, args.dry_run, args.force) {
                     Ok(_) => {}
                     Err(error) => {
                         warn!("got error {error}");
                     }
-                },
-            )?;
+                }
+            })?;
         threads.push(handle);
     }
     for t in threads {
@@ -63,6 +66,7 @@ fn clean_empty_directory(
     pb_detail: &ProgressBar,
     dir_path: &std::path::Path,
     dry_run: bool,
+    force: bool,
 ) -> std::io::Result<bool> {
     pb_detail.set_message(format!("{dir_path:#?}"));
     pb_detail.inc_length(1);
@@ -75,7 +79,7 @@ fn clean_empty_directory(
                 has_item = true;
             } else if let Ok(metadata) = dir_entry.symlink_metadata() {
                 if metadata.is_dir() && !metadata.is_symlink() {
-                    has_item |= !clean_empty_directory(pb_detail, &dir_entry, dry_run)?;
+                    has_item |= !clean_empty_directory(pb_detail, &dir_entry, dry_run, force)?;
                 } else {
                     has_item = true;
                 }
@@ -89,7 +93,7 @@ fn clean_empty_directory(
         let dry_run_text = if dry_run { "DRY RUN" } else { "" };
         pb_detail.set_message(format!("{dry_run_text} {dir_path:#?}"));
         pb_detail.inc(1);
-        match crate::common::fs::delete_directory(dir_path, dry_run) {
+        match crate::common::fs::delete_directory(dir_path, dry_run, force) {
             Ok(()) => {}
             Err(err) => {
                 warn!("cannot delete {dir_path:#?} {err}");
@@ -121,6 +125,7 @@ mod tests {
             &Args {
                 path: vec![PathBuf::from(tmp_dir.path())],
                 dry_run: true,
+                force: true,
             },
             &Verbosity::new(0, 0),
         )
@@ -131,6 +136,7 @@ mod tests {
             &Args {
                 path: vec![PathBuf::from(tmp_dir.path())],
                 dry_run: false,
+                force: true,
             },
             &Verbosity::new(0, 0),
         )
@@ -148,6 +154,7 @@ mod tests {
             &Args {
                 path: vec![PathBuf::from(tmp_dir.path())],
                 dry_run: true,
+                force: true,
             },
             &Verbosity::new(0, 0),
         )
@@ -161,6 +168,7 @@ mod tests {
             &Args {
                 path: vec![PathBuf::from(tmp_dir.path())],
                 dry_run: false,
+                force: true,
             },
             &Verbosity::new(0, 0),
         )

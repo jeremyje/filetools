@@ -20,9 +20,12 @@ pub(crate) struct Args {
     /// List of files that contain 1 file name per line of files to delete.
     #[arg(long, default_value = ".")]
     pub(crate) path: Vec<std::path::PathBuf>,
-    /// If false, will perform the delete based on the pattern filtering provided by --delete_pattern.
+    /// If false, will perform the delete based on the pattern filtering provided by `--delete_pattern`.
     #[arg(long, default_value_t = true)]
     pub(crate) dry_run: std::primitive::bool,
+    /// Force deletion of files when the read-only bit is set.
+    #[arg(long, default_value_t = false)]
+    pub(crate) force: bool,
 }
 
 pub(crate) fn run(args: &Args, verbose: &Verbosity) -> io::Result<()> {
@@ -42,7 +45,7 @@ pub(crate) fn run(args: &Args, verbose: &Verbosity) -> io::Result<()> {
     let mut num_files = 0;
     for dir_path in &args.path {
         for line in std::fs::read_to_string(dir_path)?.lines() {
-            match crate::common::fs::delete_file(line, args.dry_run) {
+            match crate::common::fs::delete_file(line, args.dry_run, args.force) {
                 Ok(()) => {
                     pb_detail.set_message(line.to_string());
                     num_files += 1;

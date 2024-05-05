@@ -11,6 +11,8 @@ A tool to manage and cleanup files on your hard drive.
 Usage: filetool [OPTIONS] <COMMAND>
 
 Commands:
+  canonical
+          Renames files to standard names. Typically this is renaming unusual file extensions
   checksum
           Calculates checksums (xxhash3-64bit) of files in selected directories
   clean-empty-directory
