@@ -30,7 +30,7 @@ pub(crate) struct Args {
     /// List of patterns that match files that should be deleted if they are in a group of duplicates.
     #[arg(long, default_value = "")]
     pub(crate) delete_pattern: Vec<String>,
-    /// If false, will perform the delete based on the pattern filtering provided by --delete_pattern.
+    /// If false, will perform the delete based on the pattern filtering provided by `--delete_pattern`.
     #[arg(long, default_value_t = true)]
     pub(crate) dry_run: std::primitive::bool,
     /// Path of where the duplicate file report will be written.
@@ -48,6 +48,9 @@ pub(crate) struct Args {
     /// Number of threads for calculating checksums.
     #[arg(long, default_value_t = 2)]
     pub(crate) checksum_threads: usize,
+    /// Force deletion of files when the read-only bit is set.
+    #[arg(long, default_value_t = false)]
+    pub(crate) force: bool,
 }
 
 pub(crate) fn run(args: &Args, verbose: &Verbosity) -> io::Result<()> {
@@ -211,7 +214,7 @@ pub(crate) fn run(args: &Args, verbose: &Verbosity) -> io::Result<()> {
             let size = crate::common::util::human_size(delete_file.size);
             pb_detail.set_message(format!("{file_path} ({size})"));
             pb_delete_bar.inc(1);
-            match crate::common::fs::delete_file(file_path, args.dry_run) {
+            match crate::common::fs::delete_file(file_path, args.dry_run, args.force) {
                 Ok(()) => {}
                 Err(error) => warn!("failed to delete file {file_path}, error: {error}"),
             }
@@ -284,7 +287,7 @@ pub(crate) fn run(args: &Args, verbose: &Verbosity) -> io::Result<()> {
     Ok(())
 }
 
-fn get_report_title(path_list: &Vec<std::path::PathBuf>) -> String {
+fn get_report_title(path_list: &[std::path::PathBuf]) -> String {
     if path_list.is_empty() {
         String::new()
     } else {
@@ -347,6 +350,7 @@ mod tests {
             overwrite: false,
             rmlist: std::path::PathBuf::from("rmlist.txt"),
             checksum_threads: 2,
+            force: true,
         };
         run(&args, &Verbosity::new(0, 0)).unwrap();
     }

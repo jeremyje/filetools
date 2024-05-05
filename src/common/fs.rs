@@ -183,35 +183,56 @@ pub(crate) fn move_file<P: AsRef<Path>>(from: P, to: P, dry_run: bool) -> io::Re
     Ok(())
 }
 
-pub(crate) fn delete_file<P: AsRef<Path>>(path: P, dry_run: bool) -> io::Result<()> {
+pub(crate) fn delete_file<P: AsRef<Path>>(path: P, dry_run: bool, force: bool) -> io::Result<()> {
     if !dry_run {
-        fs::remove_file(path)?;
-    }
-    Ok(())
-}
-
-#[allow(clippy::permissions_set_readonly_false)]
-pub(crate) fn delete_directory<P: AsRef<Path>>(path: P, dry_run: bool) -> io::Result<()> {
-    if !dry_run {
-        let dir_path = PathBuf::from(path.as_ref());
-        match fs::remove_dir(path.as_ref()) {
+        match fs::remove_file(path.as_ref()) {
             Ok(result) => result,
             Err(err) => {
-                match fs::metadata(path.as_ref()) {
-                    Ok(metadata) => {
-                        let mut perms = metadata.permissions();
-                        perms.set_readonly(false);
-                        return fs::remove_dir(path.as_ref());
-                    }
-                    Err(err) => {
-                        warn!("cannot change the permissions of {dir_path:#?} to make it deletable. Err= {err}");
-                    }
+                if force && try_unset_read_only(&path) {
+                    return fs::remove_file(path.as_ref());
                 }
                 return Err(err);
             }
         }
     }
     Ok(())
+}
+
+pub(crate) fn delete_directory<P: AsRef<Path>>(
+    path: P,
+    dry_run: bool,
+    force: bool,
+) -> io::Result<()> {
+    if !dry_run {
+        match fs::remove_dir(path.as_ref()) {
+            Ok(result) => result,
+            Err(err) => {
+                if force && try_unset_read_only(&path) {
+                    return fs::remove_dir(path.as_ref());
+                }
+                return Err(err);
+            }
+        }
+    }
+    Ok(())
+}
+
+#[allow(clippy::permissions_set_readonly_false)]
+fn try_unset_read_only<P: AsRef<Path>>(path: &P) -> bool {
+    let dir_path = PathBuf::from(path.as_ref());
+    match fs::metadata(path.as_ref()) {
+        Ok(metadata) => {
+            let mut perms = metadata.permissions();
+            perms.set_readonly(false);
+            return true;
+        }
+        Err(err) => {
+            warn!(
+                "cannot change the permissions of {dir_path:#?} to make it deletable. Err= {err}"
+            );
+        }
+    }
+    false
 }
 
 fn scan_files<T: AsRef<Path>>(
@@ -361,9 +382,9 @@ mod tests {
             .permissions()
             .set_readonly(true);
 
-        delete_directory(readonly_dir.clone(), true).expect("delete directory");
+        delete_directory(readonly_dir.clone(), true, true).expect("delete directory");
         assert_eq!(readonly_dir.exists(), true);
-        delete_directory(readonly_dir.clone(), false).expect("delete directory");
+        delete_directory(readonly_dir.clone(), false, true).expect("delete directory");
         assert_eq!(readonly_dir.exists(), false);
 
         let readwrite_dir = Path::join(tmp_dir.path(), "readwrite");
@@ -373,9 +394,9 @@ mod tests {
             .permissions()
             .set_readonly(false);
 
-        delete_directory(readwrite_dir.clone(), true).expect("delete directory");
+        delete_directory(readwrite_dir.clone(), true, true).expect("delete directory");
         assert_eq!(readwrite_dir.exists(), true);
-        delete_directory(readwrite_dir.clone(), false).expect("delete directory");
+        delete_directory(readwrite_dir.clone(), false, true).expect("delete directory");
         assert_eq!(readwrite_dir.exists(), false);
     }
 }
