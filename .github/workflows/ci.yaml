@@ -103,12 +103,12 @@ jobs:
         file: ./Dockerfile
         tags: |
           docker.io/${{ github.actor }}/filetool:canary
-          docker.io/${{ github.actor }}/filetool:0.3.0
+          docker.io/${{ github.actor }}/filetool:0.3.1
           docker.io/${{ github.actor }}/filetool:${{ github.sha }}
           docker.io/${{ github.actor }}/filetool:${{ github.run_id }}
           docker.io/${{ github.actor }}/filetool:${{ steps.get_version.outputs.build_date }}
           ghcr.io/${{ github.actor }}/filetool:canary
-          ghcr.io/${{ github.actor }}/filetool:0.3.0
+          ghcr.io/${{ github.actor }}/filetool:0.3.1
           ghcr.io/${{ github.actor }}/filetool:${{ github.sha }}
           ghcr.io/${{ github.actor }}/filetool:${{ github.run_id }}
           ghcr.io/${{ github.actor }}/filetool:${{ steps.get_version.outputs.build_date }}
@@ -117,7 +117,7 @@ jobs:
           org.opencontainers.image.description=A tool to manage and cleanup files on your hard drive.
           org.opencontainers.image.vendor=${{ github.actor }}
           org.opencontainers.image.authors=${{ github.actor }}
-          org.opencontainers.image.version=0.3.0
+          org.opencontainers.image.version=0.3.1
           org.opencontainers.image.url=${{ github.event.repository.clone_url }}
           org.opencontainers.image.source=${{ github.event.repository.clone_url }}
           org.opencontainers.image.created=${{ steps.get_version.outputs.build_timestamp }}
