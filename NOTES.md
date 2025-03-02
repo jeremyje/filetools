@@ -28,9 +28,9 @@ Similar
 ## Cross Compile
 
 ```bash
+sudo apt-get install -y mingw-w64 g++-aarch64-linux-gnu libc6-dev-arm64-cross libssl-dev
 rustup target add x86_64-pc-windows-gnu
 cargo build --target x86_64-pc-windows-gnu
-sudo apt-get install -y mingw-w64 g++-aarch64-linux-gnu libc6-dev-arm64-cross
 rustup toolchain install stable-aarch64-unknown-linux-gnu
 cargo install cargo-tarpaulin
 ```
