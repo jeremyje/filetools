@@ -70,22 +70,6 @@ jobs:
         rustup target add x86_64-pc-windows-gnu
         cargo install cargo-tarpaulin
 
-    # - name: Setup Rust
-    #   uses: dtolnay/rust-toolchain@stable
-    #   with:
-    #     targets: "x86_64-unknown-linux-gnu,x86_64-pc-windows-gnu"
-    #     components: rustfmt, clippy
-
-    # - uses: cargo-bins/cargo-binstall@main
-    # - name: Install `cargo-msrv` binary
-    #   # TODO: move out of beta & back to `taiki-e/install-action` (which we cannot use
-    #   # because it doesn't support release-candidate version notation) once properly
-    #   # released. See also https://github.com/foresterre/cargo-msrv/issues/1007
-    #   run: cargo binstall --no-confirm cargo-msrv --version 0.18.1
-
-    # - name: Format Check
-    #   run: cargo fmt --check
-
     - name: Lint
       run: make lint
 
@@ -100,8 +84,6 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
 
-    # ok
-
     - name: Archive code coverage results
       uses: actions/upload-artifact@v4
       with:
@@ -115,7 +97,7 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Build and Push Container Images
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         push: ${{ startsWith(github.ref, 'refs/tags/') }}
         file: ./Dockerfile
@@ -153,7 +135,7 @@ jobs:
         CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')
       with:
         generate_release_notes: true
