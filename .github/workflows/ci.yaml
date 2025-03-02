@@ -38,7 +38,11 @@ jobs:
         echo "build_date=$(date -u +'%Y%m%d')" >> $GITHUB_OUTPUT
     
     - name: Install Compilers
-      run: sudo apt-get install -y mingw-w64 g++-aarch64-linux-gnu libc6-dev-arm64-cross
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y mingw-w64 libssl-dev openssl
+        # sudo apt-get install -y mingw-w64 libssl-dev g++-aarch64-linux-gnu libc6-dev-arm64-cross
+        sudo ldconfig
 
     # Checks out a copy of your repository on the ubuntu-latest machine
     - name: Checkout Code
@@ -51,6 +55,7 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+
     # https://github.com/docker/login-action#github-packages-docker-registry
     - name: Login to Docker Hub
       uses: docker/login-action@v3
@@ -59,16 +64,33 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Setup Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        targets: "x86_64-unknown-linux-gnu,x86_64-pc-windows-gnu"
-        components: rustfmt, clippy
+      run: |
+        rustup update
+        rustup toolchain install stable-aarch64-unknown-linux-gnu
+        rustup target add x86_64-pc-windows-gnu
+        cargo install cargo-tarpaulin
 
-    - name: Format Check
-      run: cargo fmt --check
+    # - name: Setup Rust
+    #   uses: dtolnay/rust-toolchain@stable
+    #   with:
+    #     targets: "x86_64-unknown-linux-gnu,x86_64-pc-windows-gnu"
+    #     components: rustfmt, clippy
+
+    # - uses: cargo-bins/cargo-binstall@main
+    # - name: Install `cargo-msrv` binary
+    #   # TODO: move out of beta & back to `taiki-e/install-action` (which we cannot use
+    #   # because it doesn't support release-candidate version notation) once properly
+    #   # released. See also https://github.com/foresterre/cargo-msrv/issues/1007
+    #   run: cargo binstall --no-confirm cargo-msrv --version 0.18.1
+
+    # - name: Format Check
+    #   run: cargo fmt --check
+
+    - name: Lint
+      run: make lint
 
     - name: Build
-      run: make all -j2
+      run: make all -j$(nproc)
 
     - name: Test
       run: make test
@@ -78,14 +100,10 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Run cargo-tarpaulin
-      uses: actions-rs/tarpaulin@v0.1
-      with:
-        version: '0.15.0'
-        args: '-- --test-threads 1'
+    # ok
 
     - name: Archive code coverage results
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
         name: code-coverage-report
         path: cobertura.xml
