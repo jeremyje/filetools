@@ -28,7 +28,7 @@ pub(crate) struct Args {
     pub(crate) force: bool,
 }
 
-pub(crate) fn run(args: &Args, verbose: &Verbosity) -> io::Result<()> {
+pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
     let progress_factory = crate::common::progress::ProgressFactory::new(verbose);
     let pb_title = progress_factory.create_title();
     let pb_detail = progress_factory.create_detail();
