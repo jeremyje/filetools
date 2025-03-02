@@ -29,7 +29,7 @@ pub(crate) struct Args {
     pub(crate) force: bool,
 }
 
-pub(crate) fn run(args: &Args, verbose: &Verbosity) -> std::io::Result<()> {
+pub(crate) fn run(args: &Args, verbose: Verbosity) -> std::io::Result<()> {
     let progress_factory = crate::common::progress::ProgressFactory::new(verbose);
     let mut threads = Vec::new();
     let pb_title = progress_factory.create_title();
@@ -127,7 +127,7 @@ mod tests {
                 dry_run: true,
                 force: true,
             },
-            &Verbosity::new(0, 0),
+            Verbosity::new(0, 0),
         )
         .expect("clean_empty_directories");
         assert!(Path::join(tmp_dir.path(), "1/2/3/4/5/6").exists());
@@ -138,7 +138,7 @@ mod tests {
                 dry_run: false,
                 force: true,
             },
-            &Verbosity::new(0, 0),
+            Verbosity::new(0, 0),
         )
         .expect("clean_empty_directories");
         assert_eq!(tmp_dir.path().exists(), false);
@@ -156,7 +156,7 @@ mod tests {
                 dry_run: true,
                 force: true,
             },
-            &Verbosity::new(0, 0),
+            Verbosity::new(0, 0),
         )
         .expect("clean_empty_directories");
         assert!(tmp_dir.path().exists());
@@ -170,7 +170,7 @@ mod tests {
                 dry_run: false,
                 force: true,
             },
-            &Verbosity::new(0, 0),
+            Verbosity::new(0, 0),
         )
         .expect("clean_empty_directories");
 

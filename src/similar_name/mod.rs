@@ -39,7 +39,7 @@ pub(crate) struct Args {
     pub(crate) include_size: std::primitive::bool,
 }
 
-pub(crate) fn run(args: &Args, verbose: &Verbosity) -> io::Result<()> {
+pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
     let (path_tx, path_rx) = crossbeam_channel::unbounded();
     let walk_thread = crate::common::fs::threaded_walk_dir(args.path.as_slice(), path_tx)?;
 
@@ -113,7 +113,7 @@ mod tests {
                 min_size: 0,
                 include_size: true,
             },
-            &Verbosity::new(0, 0),
+            Verbosity::new(0, 0),
         )
         .expect("similar name");
     }

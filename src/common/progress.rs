@@ -29,7 +29,7 @@ pub(crate) struct ProgressFactory {
 
 impl ProgressFactory {
     /// new creates a new duplicate file DB.
-    pub(crate) fn new(verbose: &Verbosity) -> Self {
+    pub(crate) fn new(verbose: Verbosity) -> Self {
         let multi_progress = MultiProgress::new();
         let logger = env_logger::Builder::from_env(
             env_logger::Env::default()
@@ -89,7 +89,7 @@ mod tests {
 
     #[test]
     fn test_create_progress_bars() {
-        let factory = ProgressFactory::new(&Verbosity::new(0, 0));
+        let factory = ProgressFactory::new(Verbosity::new(0, 0));
         let pb_title = factory.create_title();
         let pb_detail = factory.create_detail();
         let pb_bar = factory.create_bar();

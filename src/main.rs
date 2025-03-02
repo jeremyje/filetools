@@ -59,12 +59,12 @@ enum Commands {
 fn main() -> std::io::Result<()> {
     let cli = Cli::parse();
     match &cli.command {
-        Commands::Canonical(args) => canonical::run(args, &cli.verbose),
-        Commands::Checksum(args) => checksum::run(args, &cli.verbose),
-        Commands::CleanEmptyDirectory(args) => clean_empty_directory::run(args, &cli.verbose),
-        Commands::CleanFilename(args) => clean_filename::run(args, &cli.verbose),
-        Commands::Duplicate(args) => duplicate::run(args, &cli.verbose),
-        Commands::Rmlist(args) => rmlist::run(args, &cli.verbose),
-        Commands::SimilarName(args) => similar_name::run(args, &cli.verbose),
+        Commands::Canonical(args) => canonical::run(args, cli.verbose),
+        Commands::Checksum(args) => checksum::run(args, cli.verbose),
+        Commands::CleanEmptyDirectory(args) => clean_empty_directory::run(args, cli.verbose),
+        Commands::CleanFilename(args) => clean_filename::run(args, cli.verbose),
+        Commands::Duplicate(args) => duplicate::run(args, cli.verbose),
+        Commands::Rmlist(args) => rmlist::run(args, cli.verbose),
+        Commands::SimilarName(args) => similar_name::run(args, cli.verbose),
     }
 }

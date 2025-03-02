@@ -55,7 +55,7 @@ pub(crate) struct Args {
     pub(crate) force: bool,
 }
 
-pub(crate) fn run(args: &Args, verbose: &Verbosity) -> io::Result<()> {
+pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
     let (path_tx, path_rx) = crossbeam_channel::unbounded();
     let (hash_tx, hash_rx) = crossbeam_channel::unbounded();
     let (hash_result_tx, hash_result_rx) =
@@ -325,7 +325,10 @@ fn get_report_title(path_list: &[std::path::PathBuf]) -> String {
     }
 }
 
-fn match_file(path: &std::path::Path, delete_pattern: &Vec<String>) -> bool {
+fn match_file(path: &std::path::Path, delete_pattern: &[String]) -> bool {
+    if delete_pattern.is_empty() {
+        return false;
+    }
     if let Some(p) = path.to_str() {
         for pattern in delete_pattern {
             if !pattern.is_empty() && p.contains(pattern) {
@@ -354,6 +357,15 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_match_file() {
+        assert!(match_file(&std::path::PathBuf::from("/ok"), &Vec::new()) == false);
+        assert!(match_file(
+            &std::path::PathBuf::from("/ok"),
+            &[String::from("/ok")]
+        ));
+    }
+
+    #[test]
     fn test_get_batch_size() {
         assert_eq!(get_batch_size(0), 100);
         assert_eq!(get_batch_size(100), 100);
@@ -377,6 +389,6 @@ mod tests {
             checksum_threads: 2,
             force: true,
         };
-        run(&args, &Verbosity::new(0, 0)).unwrap();
+        run(&args, Verbosity::new(0, 0)).unwrap();
     }
 }

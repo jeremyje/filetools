@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use log::{trace, warn};
-use std::io::{self, Write};
 use clap_verbosity_flag::Verbosity;
+use log::trace;
+use std::io;
 
 #[derive(clap::Args, Clone)]
 pub(crate) struct Args {
@@ -29,7 +29,7 @@ pub(crate) struct Args {
     pub(crate) overwrite: bool,
 }
 
-pub(crate) fn run(args: &Args, verbose: &Verbosity) -> io::Result<()> {
+pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
     let (path_tx, path_rx) = crossbeam_channel::unbounded();
 
     let progress_factory = crate::common::progress::ProgressFactory::new(verbose);
@@ -43,18 +43,16 @@ pub(crate) fn run(args: &Args, verbose: &Verbosity) -> io::Result<()> {
     let walk_join = crate::common::fs::threaded_walk_dir(&args.path, path_tx)?;
     let clean_filename_thread = std::thread::spawn(move || {
         let mut scan_count = 0;
-        let mut error_count =0;
+        let mut error_count = 0;
         for md in path_rx {
             scan_count += 1;
             pb_detail.set_message(format!("[{scan_count}] {:#?}", md.path));
             let filename = md.path.clone();
             match clean_filename(&md) {
-                Ok(()) => {
-
-                }
+                Ok(()) => {}
                 Err(error) => {
                     pb_detail.set_message("cannot sanitize filename {filename} {error}.");
-                    error_count +=1;
+                    error_count += 1;
                 }
             }
         }
@@ -79,14 +77,16 @@ fn stem_ext(path: &std::path::Path) -> (String, String) {
     if let Some(stem_os_str) = path.file_stem() {
         let stem = String::from(stem_os_str.to_str().expect("basename conversion"));
         if let Some(ext_os_str) = path.extension() {
-            return (stem, String::from(ext_os_str.to_str().expect("extension conversion")))
+            return (
+                stem,
+                String::from(ext_os_str.to_str().expect("extension conversion")),
+            );
         } else {
-            return (stem, String::new())
+            return (stem, String::new());
         }
     }
-    return (String::new(), String::new())
+    (String::new(), String::new())
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -94,6 +94,9 @@ mod tests {
 
     #[test]
     fn test_stem_ext() {
-        assert_eq!(stem_ext(&std::path::Path::new("test/abc.123")), (String::from("abc"), String::from("123")));
+        assert_eq!(
+            stem_ext(&std::path::Path::new("test/abc.123")),
+            (String::from("abc"), String::from("123"))
+        );
     }
 }

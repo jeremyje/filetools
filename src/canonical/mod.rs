@@ -41,7 +41,7 @@ pub(crate) struct Args {
     pub(crate) dry_run: std::primitive::bool,
 }
 
-pub(crate) fn run(args: &Args, verbose: &Verbosity) -> Result<()> {
+pub(crate) fn run(args: &Args, verbose: Verbosity) -> Result<()> {
     let (path_tx, path_rx) = crossbeam_channel::unbounded();
 
     let progress_factory = crate::common::progress::ProgressFactory::new(verbose);
@@ -143,7 +143,7 @@ mod tests {
                 path: vec![PathBuf::from(tmp_dir.path())],
                 dry_run: true,
             },
-            &Verbosity::new(0, 0),
+            Verbosity::new(0, 0),
         )
         .expect("canonical");
         assert!(&a_txt.exists());
@@ -156,7 +156,7 @@ mod tests {
                 path: vec![PathBuf::from(tmp_dir.path())],
                 dry_run: false,
             },
-            &Verbosity::new(1, 1),
+            Verbosity::new(1, 1),
         )
         .expect("canonical");
         assert!(&a_txt.exists());
