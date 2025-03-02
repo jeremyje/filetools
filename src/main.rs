@@ -15,6 +15,7 @@
 mod canonical;
 mod checksum;
 mod clean_empty_directory;
+mod clean_filename;
 mod common;
 mod duplicate;
 mod rmlist;
@@ -45,6 +46,8 @@ enum Commands {
     Checksum(checksum::Args),
     /// Removes directories that do not contain any files.
     CleanEmptyDirectory(clean_empty_directory::Args),
+    /// List files with similar file names.
+    CleanFilename(clean_filename::Args),
     /// Finds duplicate files and conditionally deletes them.
     Duplicate(duplicate::Args),
     /// Delete files from file lists.
@@ -59,6 +62,7 @@ fn main() -> std::io::Result<()> {
         Commands::Canonical(args) => canonical::run(args, &cli.verbose),
         Commands::Checksum(args) => checksum::run(args, &cli.verbose),
         Commands::CleanEmptyDirectory(args) => clean_empty_directory::run(args, &cli.verbose),
+        Commands::CleanFilename(args) => clean_filename::run(args, &cli.verbose),
         Commands::Duplicate(args) => duplicate::run(args, &cli.verbose),
         Commands::Rmlist(args) => rmlist::run(args, &cli.verbose),
         Commands::SimilarName(args) => similar_name::run(args, &cli.verbose),
