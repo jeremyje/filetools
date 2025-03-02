@@ -123,7 +123,7 @@ clean:
 presubmit: clean check all coverage.txt
 
 run:
-	cargo run -- duplicate --path=$(PWD) --verbose=true --output=report.html
+	cargo run -- duplicate --path=$(PWD) --verbose --output=report.html
 
 # FROM=0.9.9 TO=1.0.0 make changever
 changever:
