@@ -198,13 +198,13 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
         let dup_size_str = crate::common::util::human_size(dup_size);
 
         let deleted_text = if thread_args.dry_run {
-            "deleted (dry run)"
+            "[DRY RUN] Would have deleted"
         } else {
-            "deleted"
+            "Deleted"
         };
 
         pb_title.set_message(format!(
-            "Found {num_dups} ({dup_size_str}) duplicates from {files_scanned} files, {num_delete} ({delete_size_str}) were {deleted_text}."
+            "Scanned {files_scanned} files and found {num_dups} duplicates ({dup_size_str}). {deleted_text} {num_delete} files ({delete_size_str})."
         ));
         pb_detail.set_message("Writing report...");
         if orig.is_file() && !thread_args.overwrite {
@@ -212,9 +212,7 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
         } else {
             match report::html_file(&thread_args.output, &report_title, &dups) {
                 Ok(()) => {
-                    pb_title.finish_with_message(format!(
-                        "Found {num_dups} ({dup_size_str}) duplicates from {files_scanned} files, {num_delete} ({delete_size_str}) were {deleted_text}. See {output_file}"
-                        , output_file=thread_args.output));
+                    pb_title.finish_with_message(format!("Scanned {files_scanned} files and found {num_dups} duplicates ({dup_size_str}). {deleted_text} {num_delete} files ({delete_size_str}). See {output_file}", output_file=thread_args.output));
                     pb_detail.finish_and_clear();
                 }
                 Err(error) => {
