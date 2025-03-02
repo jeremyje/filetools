@@ -28,17 +28,17 @@ categories = ["command-line-utilities"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cargo-tarpaulin = "0.27.2"
+cargo-tarpaulin = "0.32.0"
 chrono = "0.4.31"
 clap = { version = "4.4.7", features = ["derive"] }
-clap-verbosity-flag = "2.1.0"
+clap-verbosity-flag = "3.0.2"
 concat-string = "1.0.1"
 crc = "3.0.1"
 crossbeam-channel = "0.5.10"
 data-encoding = "2.4.0"
 dunce = "1.0.4"
 env_logger = "0.11.2"
-handlebars = "5.0.0"
+handlebars = "6.3.1"
 humansize = "2.1.3"
 indicatif = "0.17.7"
 indicatif-log-bridge = "0.2.2"
@@ -46,14 +46,14 @@ log = "0.4.20"
 more-asserts = "0.3.1"
 mp4 = "0.14.0"
 phf = { version = "0.11.2", features = ["macros"] }
-remove_dir_all = "0.8.2"
+remove_dir_all = "1.0.0"
 ring = "0.17.5"
 serde = "1.0.193"
 serde_json = "1.0.108"
 tempfile = "3.10.0"
 threadpool = "1.8.1"
 time = "0.3.30"
-twox-hash = "1.6.3"
+twox-hash = "2.1.0"
 
 [dev-dependencies]
 testfiles = "0.0.4"
