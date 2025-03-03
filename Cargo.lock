@@ -207,9 +207,9 @@ dependencies = [
 
 [[package]]
 name = "cargo-tarpaulin"
-version = "0.32.0"
+version = "0.32.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7496e93017a031a60aefb09d2c055556ae87b6360f703336a7ac82ed8f0eefe"
+checksum = "263d3e65f60179d7effe4cfea982ac4e50aee84c2d13de01738de0b7db74aad3"
 dependencies = [
  "cargo_metadata",
  "cfg-if",
