@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use csv::Writer;
 use handlebars::Handlebars;
 use serde_json::json;
 use std::{fs, vec::Vec};
-use csv::Writer;
 
 use crate::common::fs::FileMetadata;
 
@@ -27,7 +27,10 @@ pub(crate) fn csv_file(
 ) -> std::io::Result<()> {
     let mut wtr = Writer::from_path(output_path)?;
     for dup in dups {
-        let row: Vec<&str> = dup.iter().map(|md: &FileMetadata|  md.path.to_str().unwrap_or("")).collect();
+        let row: Vec<&str> = dup
+            .iter()
+            .map(|md: &FileMetadata| md.path.to_str().unwrap_or(""))
+            .collect();
         wtr.write_record(row)?;
     }
     wtr.flush()?;
@@ -38,7 +41,6 @@ pub(crate) fn csv(
     title: &str,
     dups: &Vec<Vec<crate::common::fs::FileMetadata>>,
 ) -> Result<String, Box<dyn std::error::Error>> {
-
     let mut reg = Handlebars::new();
     reg.set_strict_mode(true);
     reg.register_helper("humansize", Box::new(humansize));
@@ -51,7 +53,6 @@ pub(crate) fn csv(
         }),
     )?)
 }
-
 
 pub(crate) fn html_file(
     output_path: &str,
