@@ -41,8 +41,8 @@ Options:
 
 Linux
 
-`curl -o filetool -O -L https://github.com/jeremyje/filetools/releases/download/v0.5.1/filetool; chmod +x filetool`
+`curl -o filetool -O -L https://github.com/jeremyje/filetools/releases/download/v0.5.2/filetool; chmod +x filetool`
 
 Windows
 
-`(New-Object System.Net.WebClient).DownloadFile("https://github.com/jeremyje/filetools/releases/download/v0.5.1/filetool.exe", "filetool.exe")`
+`(New-Object System.Net.WebClient).DownloadFile("https://github.com/jeremyje/filetools/releases/download/v0.5.2/filetool.exe", "filetool.exe")`
