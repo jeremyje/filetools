@@ -37,23 +37,6 @@ pub(crate) fn csv_file(
     Ok(())
 }
 
-pub(crate) fn csv(
-    title: &str,
-    dups: &Vec<Vec<crate::common::fs::FileMetadata>>,
-) -> Result<String, Box<dyn std::error::Error>> {
-    let mut reg = Handlebars::new();
-    reg.set_strict_mode(true);
-    reg.register_helper("humansize", Box::new(humansize));
-    reg.register_template_string("duplicate-report", DUPLICATE_REPORT_HTML)?;
-    Ok(reg.render(
-        "duplicate-report",
-        &json!({
-            "title": title,
-            "groups": dups,
-        }),
-    )?)
-}
-
 pub(crate) fn html_file(
     output_path: &str,
     title: &str,

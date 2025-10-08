@@ -157,12 +157,17 @@ pub(crate) fn walk_dir(
                                             })?;
                                         } else {
                                             warn!(
-                                                "'{path:#?}' cannot be converted to a string, skipping.");
+                                                "'{}' cannot be converted to a string, skipping.",
+                                                path.display()
+                                            );
                                         }
                                     }
                                 }
                                 Err(error) => {
-                                    warn!("cannot obtain file metadata for {path:#?}, {error}");
+                                    warn!(
+                                        "cannot obtain file metadata for {}, {error}",
+                                        path.display()
+                                    );
                                 }
                             }
                         }
@@ -170,7 +175,7 @@ pub(crate) fn walk_dir(
                     }
                 }
             }
-            Err(error) => warn!("directory {path_dir:#?} cannot be listed, {error}"),
+            Err(error) => warn!("directory {} cannot be listed, {error}", path_dir.display()),
         }
     }
     Ok(())
@@ -228,7 +233,8 @@ fn try_unset_read_only<P: AsRef<Path>>(path: &P) -> bool {
         }
         Err(err) => {
             warn!(
-                "cannot change the permissions of {dir_path:#?} to make it deletable. Err= {err}"
+                "cannot change the permissions of {} to make it deletable. Err= {err}",
+                dir_path.display()
             );
         }
     }
@@ -243,7 +249,7 @@ fn scan_files<T: AsRef<Path>>(
     for p in path_list {
         let path = std::path::PathBuf::from(p.as_ref());
         let tx = path_tx.clone();
-        let thread_name = format!("scan_files-{path:#?}");
+        let thread_name = format!("scan_files-{}", path.display());
         let walk_handle = std::thread::Builder::new()
             .name(thread_name)
             .spawn(move || crate::common::fs::walk_dir(&path, &tx))

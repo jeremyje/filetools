@@ -67,17 +67,18 @@ fn canonicalize_filenames(args: &Args, pb_detail: &ProgressBar, path_rx: Receive
     let mut files_renamed = 0;
     for md in path_rx {
         files_scanned += 1;
-        pb_detail.set_message(format!("[{files_scanned}] {path:#?}", path = md.path));
+        pb_detail.set_message(format!("[{files_scanned}] {}", md.path.display()));
         if let Some(new_path) = canonicalize_path(&md.path) {
             files_renamed += 1;
             match move_file(md.path.clone(), new_path.clone(), args.dry_run) {
                 Ok(()) => {
-                    info!("{path:#?} => {new_path:#?}", path = md.path);
+                    info!("{} => {}", md.path.display(), new_path.display());
                 }
                 Err(error) => {
                     warn!(
-                        "Cannot rename {path:#?} => {new_path:#?}, Error= {error}",
-                        path = md.path
+                        "Cannot rename {} => {}, Error= {error}",
+                        md.path.display(),
+                        new_path.display()
                     );
                 }
             }

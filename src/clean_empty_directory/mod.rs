@@ -68,7 +68,7 @@ fn clean_empty_directory(
     dry_run: bool,
     force: bool,
 ) -> std::io::Result<bool> {
-    pb_detail.set_message(format!("{dir_path:#?}"));
+    pb_detail.set_message(format!("{}", dir_path.display()));
     pb_detail.inc_length(1);
 
     let mut has_item = false;
@@ -91,12 +91,12 @@ fn clean_empty_directory(
     let mut can_delete = !has_item;
     if can_delete {
         let dry_run_text = if dry_run { "DRY RUN" } else { "" };
-        pb_detail.set_message(format!("{dry_run_text} {dir_path:#?}"));
+        pb_detail.set_message(format!("{dry_run_text} {}", dir_path.display()));
         pb_detail.inc(1);
         match crate::common::fs::delete_directory(dir_path, dry_run, force) {
             Ok(()) => {}
             Err(err) => {
-                warn!("cannot delete {dir_path:#?} {err}");
+                warn!("cannot delete '{}' {err}", dir_path.display());
                 can_delete = false;
             }
         }

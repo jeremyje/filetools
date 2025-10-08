@@ -72,8 +72,11 @@ pub(crate) fn worker_pool(
                             warn!("cannot send checksum, {error}");
                         }
                     },
-                    Err(error) => warn!("Cannot compute checksum of file, '{p:#?}' {error:?}"),
-                };
+                    Err(error) => warn!(
+                        "Cannot compute checksum of file, '{}' {error:?}",
+                        p.display()
+                    ),
+                }
             }
         },
     )

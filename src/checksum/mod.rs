@@ -53,7 +53,10 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> std::io::Result<()> {
         match checksum_db.load(&checksum_db_filepath) {
             Ok(()) => {}
             Err(error) => {
-                warn!("cannot load checksum file {checksum_db_filepath:#?}, {error}");
+                warn!(
+                    "cannot load checksum file {}, {error}",
+                    checksum_db_filepath.display()
+                );
             }
         }
         let mut m = HashMap::new();
@@ -77,7 +80,7 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> std::io::Result<()> {
 
             if let Some(path) = p.to_str().map(String::from) {
                 if let Some(md) = m.get(&path) {
-                    pb_detail.set_message(format!("{:#?}", md.path));
+                    pb_detail.set_message(format!("{}", md.path.display()));
                     pb_checksum_bar.inc(1);
                     checksum_db.put(md, &hash_result.checksum);
                 }
@@ -88,7 +91,7 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> std::io::Result<()> {
 
         pb_title.set_prefix("Saving...");
         checksum_db.write(&checksum_db_filepath).unwrap();
-        pb_title.set_prefix(format!("Completed, see {checksum_db_filepath:#?}"));
+        pb_title.set_prefix(format!("Completed, see {}", checksum_db_filepath.display()));
     });
 
     walk_join();
