@@ -210,16 +210,31 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
         if orig.is_file() && !thread_args.overwrite {
             pb_detail.set_message(format!("Cannot save report to {output_file} because it already exists, to forcefully overwrite the file use, --overwrite=true", output_file=thread_args.output));
         } else {
-            match report::html_file(&thread_args.output, &report_title, &dups) {
-                Ok(()) => {
-                    pb_title.finish_with_message(format!("Scanned {files_scanned} files and found {num_dups} duplicates ({dup_size_str}). {deleted_text} {num_delete} files ({delete_size_str}). See {output_file}", output_file=thread_args.output));
-                    pb_detail.finish_and_clear();
+            if thread_args.output.to_lowercase().ends_with(".csv") {
+                match report::csv_file(&thread_args.output, &dups) {
+                    Ok(()) => {
+                        pb_title.finish_with_message(format!("Scanned {files_scanned} files and found {num_dups} duplicates ({dup_size_str}). {deleted_text} {num_delete} files ({delete_size_str}). See {output_file}", output_file=thread_args.output));
+                        pb_detail.finish_and_clear();
+                    }
+                    Err(error) => {
+                        pb_detail.set_message(format!(
+                            "cannot write report to '{output_file}', error: {error}",
+                            output_file = thread_args.output
+                        ));
+                    }
                 }
-                Err(error) => {
-                    pb_detail.set_message(format!(
-                        "cannot write report to '{output_file}', error: {error}",
-                        output_file = thread_args.output
-                    ));
+            } else {
+                match report::html_file(&thread_args.output, &report_title, &dups) {
+                    Ok(()) => {
+                        pb_title.finish_with_message(format!("Scanned {files_scanned} files and found {num_dups} duplicates ({dup_size_str}). {deleted_text} {num_delete} files ({delete_size_str}). See {output_file}", output_file=thread_args.output));
+                        pb_detail.finish_and_clear();
+                    }
+                    Err(error) => {
+                        pb_detail.set_message(format!(
+                            "cannot write report to '{output_file}', error: {error}",
+                            output_file = thread_args.output
+                        ));
+                    }
                 }
             }
         }

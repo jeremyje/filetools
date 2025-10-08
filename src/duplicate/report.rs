@@ -15,8 +15,43 @@
 use handlebars::Handlebars;
 use serde_json::json;
 use std::{fs, vec::Vec};
+use csv::Writer;
+
+use crate::common::fs::FileMetadata;
 
 const DUPLICATE_REPORT_HTML: &str = include_str!("embed/templates/duplicate-report.html");
+
+pub(crate) fn csv_file(
+    output_path: &str,
+    dups: &Vec<Vec<crate::common::fs::FileMetadata>>,
+) -> std::io::Result<()> {
+    let mut wtr = Writer::from_path(output_path)?;
+    for dup in dups {
+        let row: Vec<&str> = dup.iter().map(|md: &FileMetadata|  md.path.to_str().unwrap_or("")).collect();
+        wtr.write_record(row)?;
+    }
+    wtr.flush()?;
+    Ok(())
+}
+
+pub(crate) fn csv(
+    title: &str,
+    dups: &Vec<Vec<crate::common::fs::FileMetadata>>,
+) -> Result<String, Box<dyn std::error::Error>> {
+
+    let mut reg = Handlebars::new();
+    reg.set_strict_mode(true);
+    reg.register_helper("humansize", Box::new(humansize));
+    reg.register_template_string("duplicate-report", DUPLICATE_REPORT_HTML)?;
+    Ok(reg.render(
+        "duplicate-report",
+        &json!({
+            "title": title,
+            "groups": dups,
+        }),
+    )?)
+}
+
 
 pub(crate) fn html_file(
     output_path: &str,
