@@ -80,8 +80,8 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
         match checksum_db.load(&thread_args.db) {
             Ok(()) => {}
             Err(error) => warn!(
-                "cannot load checksum file {checksum_db_filepath:#?}, {error}",
-                checksum_db_filepath = thread_args.db
+                "cannot load checksum file {}, {error}",
+                thread_args.db.display()
             ),
         }
 
@@ -90,7 +90,7 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
         for md in path_rx {
             files_scanned += 1;
             if md.size >= thread_args.min_size {
-                pb_detail.set_message(format!("[{files_scanned}] {:#?}", md.path));
+                pb_detail.set_message(format!("[{files_scanned}] {}", md.path.display()));
                 dup_db.put(&md);
             }
         }
@@ -122,7 +122,7 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
         let mut num_hash = 0;
         for hash_result in hash_result_rx {
             pb_checksum_bar.inc(1);
-            pb_detail.set_message(format!("{:#?}", hash_result.path));
+            pb_detail.set_message(format!("{}", hash_result.path.display()));
             let p: &std::path::Path = &hash_result.path;
             let checksum: &str = &hash_result.checksum;
             if let Some(dup_val) = dup_db.get(p) {
@@ -131,22 +131,23 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
                 if num_hash % hash_batch_size == 0 {
                     match checksum_db.write(&thread_args.db) {
                         Ok(()) => pb_checksum_bar
-                                .set_message(format!("{num_hash}/{require_checksum} checksums")),
-                        Err(error) =>  warn!(
-                                "cannot save checksums to db '{checksum_db_filepath:#?}', error:{error}"
-                            ,checksum_db_filepath=thread_args.db),
+                            .set_message(format!("{num_hash}/{require_checksum} checksums")),
+                        Err(error) => warn!(
+                            "cannot save checksums to db '{}', error:{error}",
+                            thread_args.db.display()
+                        ),
                     }
                 }
             } else {
-                warn!("'{p:#?}' has no entry in dup_db.");
+                warn!("'{}' has no entry in dup_db.", p.display());
             }
         }
         match checksum_db.write(&thread_args.db) {
             Ok(()) => {}
             Err(error) => {
                 warn!(
-                    "cannot save checksums to db '{checksum_db_filepath:#?}', error:{error}",
-                    checksum_db_filepath = thread_args.db
+                    "cannot save checksums to db '{}', error:{error}",
+                    thread_args.db.display()
                 );
             }
         }
@@ -209,32 +210,30 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
         pb_detail.set_message("Writing report...");
         if orig.is_file() && !thread_args.overwrite {
             pb_detail.set_message(format!("Cannot save report to {output_file} because it already exists, to forcefully overwrite the file use, --overwrite=true", output_file=thread_args.output));
-        } else {
-            if thread_args.output.to_lowercase().ends_with(".csv") {
-                match report::csv_file(&thread_args.output, &dups) {
-                    Ok(()) => {
-                        pb_title.finish_with_message(format!("Scanned {files_scanned} files and found {num_dups} duplicates ({dup_size_str}). {deleted_text} {num_delete} files ({delete_size_str}). See {output_file}", output_file=thread_args.output));
-                        pb_detail.finish_and_clear();
-                    }
-                    Err(error) => {
-                        pb_detail.set_message(format!(
-                            "cannot write report to '{output_file}', error: {error}",
-                            output_file = thread_args.output
-                        ));
-                    }
+        } else if thread_args.output.to_lowercase().ends_with(".csv") {
+            match report::csv_file(&thread_args.output, &dups) {
+                Ok(()) => {
+                    pb_title.finish_with_message(format!("Scanned {files_scanned} files and found {num_dups} duplicates ({dup_size_str}). {deleted_text} {num_delete} files ({delete_size_str}). See {output_file}", output_file=thread_args.output));
+                    pb_detail.finish_and_clear();
                 }
-            } else {
-                match report::html_file(&thread_args.output, &report_title, &dups) {
-                    Ok(()) => {
-                        pb_title.finish_with_message(format!("Scanned {files_scanned} files and found {num_dups} duplicates ({dup_size_str}). {deleted_text} {num_delete} files ({delete_size_str}). See {output_file}", output_file=thread_args.output));
-                        pb_detail.finish_and_clear();
-                    }
-                    Err(error) => {
-                        pb_detail.set_message(format!(
-                            "cannot write report to '{output_file}', error: {error}",
-                            output_file = thread_args.output
-                        ));
-                    }
+                Err(error) => {
+                    pb_detail.set_message(format!(
+                        "cannot write report to '{output_file}', error: {error}",
+                        output_file = thread_args.output
+                    ));
+                }
+            }
+        } else {
+            match report::html_file(&thread_args.output, &report_title, &dups) {
+                Ok(()) => {
+                    pb_title.finish_with_message(format!("Scanned {files_scanned} files and found {num_dups} duplicates ({dup_size_str}). {deleted_text} {num_delete} files ({delete_size_str}). See {output_file}", output_file=thread_args.output));
+                    pb_detail.finish_and_clear();
+                }
+                Err(error) => {
+                    pb_detail.set_message(format!(
+                        "cannot write report to '{output_file}', error: {error}",
+                        output_file = thread_args.output
+                    ));
                 }
             }
         }
@@ -274,18 +273,24 @@ fn write_rmlist(delete_files: &[FileMetadata], args: &Args) {
                 let mut writer = std::io::LineWriter::new(file);
                 for delete_file in delete_files {
                     let delete_file_path = &delete_file.path;
-                    warn!("rmlist {delete_file_path:#?}");
+                    warn!("rmlist {}", delete_file_path.display());
                     if let Some(path_str) = delete_file.path.to_str() {
                         match writer.write_all(path_str.as_bytes()) {
                             Ok(()) => {}
                             Err(error) => {
-                                warn!("cannot write line to rmlist '{rmlist_path:#?}' file, error: {error}", rmlist_path=args.rmlist);
+                                warn!(
+                                    "cannot write line to rmlist '{}' file, error: {error}",
+                                    args.rmlist.display()
+                                );
                             }
                         }
                         match writer.write_all("\n".as_bytes()) {
                             Ok(()) => {}
                             Err(error) => {
-                                warn!("cannot write line to rmlist '{rmlist_path:#?}' file, error: {error}", rmlist_path=args.rmlist);
+                                warn!(
+                                    "cannot write line to rmlist '{}' file, error: {error}",
+                                    args.rmlist.display()
+                                );
                             }
                         }
                     }
@@ -293,8 +298,8 @@ fn write_rmlist(delete_files: &[FileMetadata], args: &Args) {
             }
             Err(error) => {
                 warn!(
-                    "cannot write rmlist '{rmlist_path:#?}' file, error: {error}",
-                    rmlist_path = args.rmlist
+                    "cannot write rmlist '{}' file, error: {error}",
+                    args.rmlist.display()
                 );
             }
         }

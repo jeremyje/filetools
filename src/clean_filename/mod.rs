@@ -46,18 +46,21 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
         let mut error_count = 0;
         for md in path_rx {
             scan_count += 1;
-            pb_detail.set_message(format!("[{scan_count}] {:#?}", md.path));
+            pb_detail.set_message(format!("[{scan_count}] {}", md.path.display()));
             let filename = md.path.clone();
             match clean_filename(&md) {
                 Ok(()) => {}
                 Err(error) => {
-                    pb_detail.set_message("cannot sanitize filename {filename} {error}.");
+                    pb_detail.set_message(format!(
+                        "cannot sanitize filename '{}' {error}.",
+                        filename.display()
+                    ));
                     error_count += 1;
                 }
             }
         }
 
-        pb_detail.set_message("Scanned {scan_count} files, {error_count} errors.");
+        pb_detail.set_message(format!("Scanned {scan_count} files, {error_count} errors."));
     });
 
     walk_join();
@@ -81,9 +84,8 @@ fn stem_ext(path: &std::path::Path) -> (String, String) {
                 stem,
                 String::from(ext_os_str.to_str().expect("extension conversion")),
             );
-        } else {
-            return (stem, String::new());
         }
+        return (stem, String::new());
     }
     (String::new(), String::new())
 }
