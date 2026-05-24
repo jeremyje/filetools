@@ -19,6 +19,7 @@ use log::{trace, warn};
 use std::io::{self, Write};
 mod db;
 mod report;
+mod pipeline;
 use clap_verbosity_flag::Verbosity;
 use std::time::{Instant, Duration};
 
