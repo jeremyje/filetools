@@ -35,7 +35,7 @@ impl DuplicateFileDB {
     }
 
     pub(crate) fn get(
-        &mut self,
+        &self,
         path: &std::path::Path,
     ) -> Option<&Rc<crate::common::fs::FileMetadata>> {
         path.to_str().and_then(|p| self.m.get(p))
