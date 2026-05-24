@@ -252,7 +252,7 @@ fn calculate_metrics(dups: &[Vec<FileMetadata>]) -> (u64, u64) {
     let mut num_dups = 0u64;
     let mut dup_size = 0u64;
     for dup in dups {
-        for d in dup {
+        for d in dup.iter().skip(1) {
             if let Some(path) = d.path.to_str() {
                 let size = d.size;
                 let size_str = crate::common::util::human_size(size);
@@ -391,6 +391,30 @@ mod tests {
         assert_eq!(get_batch_size(125000), 250);
         assert_eq!(get_batch_size(1500000), 3000);
         assert_eq!(get_batch_size(1250), 100);
+    }
+
+    #[test]
+    fn test_calculate_metrics() {
+        use std::time::SystemTime;
+        let t = SystemTime::UNIX_EPOCH;
+
+        // Group of 2 identical files (1000 bytes each) → 1 extra copy, 1000 bytes wasted
+        let group1 = vec![
+            FileMetadata::new("/a/file1.txt", 1000, t, t),
+            FileMetadata::new("/a/file2.txt", 1000, t, t),
+        ];
+        // Group of 3 identical files (500 bytes each) → 2 extra copies, 1000 bytes wasted
+        let group2 = vec![
+            FileMetadata::new("/a/file3.txt", 500, t, t),
+            FileMetadata::new("/a/file4.txt", 500, t, t),
+            FileMetadata::new("/a/file5.txt", 500, t, t),
+        ];
+
+        let (num_dups, dup_size) = calculate_metrics(&[group1, group2]);
+        // 1 extra from group1 + 2 extras from group2 = 3 total extras
+        assert_eq!(num_dups, 3);
+        // 1*1000 + 2*500 = 2000 bytes wasted
+        assert_eq!(dup_size, 2000);
     }
 
     #[test]
