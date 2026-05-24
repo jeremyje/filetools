@@ -20,6 +20,7 @@ use std::io::{self, Write};
 mod db;
 mod report;
 use clap_verbosity_flag::Verbosity;
+use std::time::{Instant, Duration};
 
 #[derive(clap::Args, Clone)]
 pub(crate) struct Args {
@@ -50,6 +51,9 @@ pub(crate) struct Args {
     /// Number of threads for calculating checksums.
     #[arg(long, default_value_t = 2)]
     pub(crate) checksum_threads: usize,
+    /// Interval between checksum checkpoints.
+    #[arg(long, default_value = "30s", value_parser = humantime::parse_duration)]
+    pub(crate) checksum_checkpoint_interval: Duration,
     /// Force deletion of files when the read-only bit is set.
     #[arg(long, default_value_t = false)]
     pub(crate) force: bool,
@@ -120,6 +124,8 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
         let hash_batch_size = get_batch_size(num_candidates);
         pb_detail.set_prefix("Checksum");
         let mut num_hash = 0;
+        let mut last_checkpoint_time = Instant::now();
+        let checksum_checkpoint_interval = thread_args.checksum_checkpoint_interval;
         for hash_result in hash_result_rx {
             pb_checksum_bar.inc(1);
             pb_detail.set_message(format!("{}", hash_result.path.display()));
@@ -128,7 +134,10 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
             if let Some(dup_val) = dup_db.get(p) {
                 checksum_db.put(dup_val, checksum);
                 num_hash += 1;
-                if num_hash % hash_batch_size == 0 {
+                let now = Instant::now();
+                let time_since_last_checkpoint = last_checkpoint_time.duration_since(now);
+                if num_hash % hash_batch_size == 0 || time_since_last_checkpoint > checksum_checkpoint_interval {
+                    last_checkpoint_time = now;
                     match checksum_db.write(&thread_args.db) {
                         Ok(()) => pb_checksum_bar
                             .set_message(format!("{num_hash}/{require_checksum} checksums")),
@@ -429,6 +438,7 @@ mod tests {
             overwrite: false,
             rmlist: std::path::PathBuf::from("rmlist.txt"),
             checksum_threads: 2,
+            checksum_checkpoint_interval: humantime::parse_duration("10s").unwrap(),
             force: true,
         };
         run(&args, Verbosity::new(0, 0)).unwrap();
