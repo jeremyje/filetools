@@ -701,6 +701,7 @@ dependencies = [
  "env_logger",
  "handlebars",
  "humansize",
+ "humantime",
  "indicatif",
  "indicatif-log-bridge",
  "log",
