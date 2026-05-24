@@ -159,6 +159,29 @@ pub(crate) fn write_rmlist(delete_files: &[FileMetadata], rmlist_path: &std::pat
     }
 }
 
+pub(crate) fn delete_duplicates(
+    delete_files: &[FileMetadata],
+    dry_run: bool,
+    force: bool,
+    pb_detail: &ProgressBar,
+    pb_delete_bar: &ProgressBar,
+) -> u64 {
+    let mut delete_size = 0u64;
+    for delete_file in delete_files {
+        let file_path = delete_file.path.to_str().expect("cannot get file name");
+        let size = crate::common::util::human_size(delete_file.size);
+        pb_detail.set_message(format!("{file_path} ({size})"));
+        pb_delete_bar.inc(1);
+        match crate::common::fs::delete_file(file_path, dry_run, force) {
+            Ok(()) => {}
+            Err(error) => warn!("failed to delete file {file_path}, error: {error}"),
+        }
+        delete_size += delete_file.size;
+        pb_delete_bar.set_message(crate::common::util::human_size(delete_size));
+    }
+    delete_size
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -421,5 +444,41 @@ mod tests {
         let content = std::fs::read_to_string(&rmlist_path).unwrap();
         assert!(content.contains("/a/file1.txt\n"));
         assert!(content.contains("/a/file2.txt\n"));
+    }
+
+    #[test]
+    fn test_delete_duplicates_dry_run_preserves_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("file.txt");
+        std::fs::write(&file_path, b"content").unwrap();
+        let t = std::time::SystemTime::UNIX_EPOCH;
+        let files = vec![FileMetadata::new(file_path.to_str().unwrap(), 7, t, t)];
+        let pb_detail = ProgressBar::hidden();
+        let pb_delete_bar = ProgressBar::hidden();
+        let size = delete_duplicates(&files, true, false, &pb_detail, &pb_delete_bar);
+        assert_eq!(size, 7);
+        assert!(file_path.exists());
+    }
+
+    #[test]
+    fn test_delete_duplicates_removes_file_when_not_dry_run() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("file.txt");
+        std::fs::write(&file_path, b"content").unwrap();
+        let t = std::time::SystemTime::UNIX_EPOCH;
+        let files = vec![FileMetadata::new(file_path.to_str().unwrap(), 7, t, t)];
+        let pb_detail = ProgressBar::hidden();
+        let pb_delete_bar = ProgressBar::hidden();
+        let size = delete_duplicates(&files, false, false, &pb_detail, &pb_delete_bar);
+        assert_eq!(size, 7);
+        assert!(!file_path.exists());
+    }
+
+    #[test]
+    fn test_delete_duplicates_empty_list_returns_zero() {
+        let pb_detail = ProgressBar::hidden();
+        let pb_delete_bar = ProgressBar::hidden();
+        let size = delete_duplicates(&[], false, false, &pb_detail, &pb_delete_bar);
+        assert_eq!(size, 0);
     }
 }
