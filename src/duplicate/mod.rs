@@ -286,6 +286,29 @@ mod tests {
     }
 
     #[test]
+    fn test_get_report_title_empty() {
+        assert_eq!(get_report_title(&[]), String::new());
+    }
+
+    #[test]
+    fn test_get_report_title_single_path() {
+        let paths = vec![std::path::PathBuf::from("/home/user/docs")];
+        assert_eq!(get_report_title(&paths), "/home/user/docs");
+    }
+
+    #[test]
+    fn test_get_report_title_multiple_paths() {
+        let paths = vec![
+            std::path::PathBuf::from("/home/user/docs"),
+            std::path::PathBuf::from("/home/user/photos"),
+        ];
+        assert_eq!(
+            get_report_title(&paths),
+            "/home/user/docs,/home/user/photos"
+        );
+    }
+
+    #[test]
     fn run_test() {
         let args = Args {
             path: vec![std::path::PathBuf::from(".")],
