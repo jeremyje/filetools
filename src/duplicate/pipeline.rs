@@ -136,6 +136,29 @@ pub(crate) fn select_deletions(
     delete_files
 }
 
+pub(crate) fn write_rmlist(delete_files: &[FileMetadata], rmlist_path: &std::path::Path) {
+    if delete_files.is_empty() {
+        return;
+    }
+    match std::fs::File::create(rmlist_path) {
+        Ok(file) => {
+            let mut writer = std::io::LineWriter::new(file);
+            for delete_file in delete_files {
+                warn!("rmlist {}", delete_file.path.display());
+                if let Some(path_str) = delete_file.path.to_str() {
+                    if let Err(error) = writer.write_all(path_str.as_bytes()) {
+                        warn!("cannot write line to rmlist '{}', error: {error}", rmlist_path.display());
+                    }
+                    if let Err(error) = writer.write_all(b"\n") {
+                        warn!("cannot write newline to rmlist '{}', error: {error}", rmlist_path.display());
+                    }
+                }
+            }
+        }
+        Err(error) => warn!("cannot write rmlist '{}', error: {error}", rmlist_path.display()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -375,5 +398,28 @@ mod tests {
         let result = select_deletions(&dups, &[String::from("/trash")], &mut dup_db);
         // Both match the pattern but only 1 of 2 may be deleted (must keep at least 1)
         assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn test_write_rmlist_empty_list_creates_no_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let rmlist_path = dir.path().join("rmlist.txt");
+        write_rmlist(&[], &rmlist_path);
+        assert!(!rmlist_path.exists());
+    }
+
+    #[test]
+    fn test_write_rmlist_creates_file_with_paths() {
+        let dir = tempfile::tempdir().unwrap();
+        let rmlist_path = dir.path().join("rmlist.txt");
+        let t = std::time::SystemTime::UNIX_EPOCH;
+        let files = vec![
+            FileMetadata::new("/a/file1.txt", 100, t, t),
+            FileMetadata::new("/a/file2.txt", 200, t, t),
+        ];
+        write_rmlist(&files, &rmlist_path);
+        let content = std::fs::read_to_string(&rmlist_path).unwrap();
+        assert!(content.contains("/a/file1.txt\n"));
+        assert!(content.contains("/a/file2.txt\n"));
     }
 }
