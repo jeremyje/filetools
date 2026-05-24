@@ -147,15 +147,24 @@ pub(crate) fn write_rmlist(delete_files: &[FileMetadata], rmlist_path: &std::pat
                 warn!("rmlist {}", delete_file.path.display());
                 if let Some(path_str) = delete_file.path.to_str() {
                     if let Err(error) = writer.write_all(path_str.as_bytes()) {
-                        warn!("cannot write line to rmlist '{}', error: {error}", rmlist_path.display());
+                        warn!(
+                            "cannot write line to rmlist '{}', error: {error}",
+                            rmlist_path.display()
+                        );
                     }
                     if let Err(error) = writer.write_all(b"\n") {
-                        warn!("cannot write newline to rmlist '{}', error: {error}", rmlist_path.display());
+                        warn!(
+                            "cannot write newline to rmlist '{}', error: {error}",
+                            rmlist_path.display()
+                        );
                     }
                 }
             }
         }
-        Err(error) => warn!("cannot write rmlist '{}', error: {error}", rmlist_path.display()),
+        Err(error) => warn!(
+            "cannot write rmlist '{}', error: {error}",
+            rmlist_path.display()
+        ),
     }
 }
 
@@ -200,8 +209,10 @@ mod tests {
     fn test_scan_files_respects_min_size() {
         let (tx, rx) = crossbeam_channel::unbounded();
         let t = std::time::SystemTime::UNIX_EPOCH;
-        tx.send(FileMetadata::new("/a/large.txt", 1000, t, t)).unwrap();
-        tx.send(FileMetadata::new("/a/small.txt", 50, t, t)).unwrap();
+        tx.send(FileMetadata::new("/a/large.txt", 1000, t, t))
+            .unwrap();
+        tx.send(FileMetadata::new("/a/small.txt", 50, t, t))
+            .unwrap();
         drop(tx);
         let pb = ProgressBar::hidden();
         let (db, count) = scan_files(&rx, 100, &pb);
@@ -214,8 +225,10 @@ mod tests {
     fn test_scan_files_includes_all_at_or_above_min_size() {
         let (tx, rx) = crossbeam_channel::unbounded();
         let t = std::time::SystemTime::UNIX_EPOCH;
-        tx.send(FileMetadata::new("/a/file1.txt", 500, t, t)).unwrap();
-        tx.send(FileMetadata::new("/a/file2.txt", 500, t, t)).unwrap();
+        tx.send(FileMetadata::new("/a/file1.txt", 500, t, t))
+            .unwrap();
+        tx.send(FileMetadata::new("/a/file2.txt", 500, t, t))
+            .unwrap();
         drop(tx);
         let pb = ProgressBar::hidden();
         let (db, count) = scan_files(&rx, 0, &pb);
@@ -237,7 +250,10 @@ mod tests {
         let (count, size) = dispatch_checksum_work(&dup_db, &checksum_db, hash_tx);
         assert_eq!(count, 1);
         assert_eq!(size, 1000);
-        let paths: Vec<String> = hash_rx.iter().map(|p| p.to_str().unwrap().to_string()).collect();
+        let paths: Vec<String> = hash_rx
+            .iter()
+            .map(|p| p.to_str().unwrap().to_string())
+            .collect();
         assert_eq!(paths, vec!["/a/file1.txt"]);
     }
 
@@ -269,7 +285,10 @@ mod tests {
         let (count, size) = dispatch_checksum_work(&dup_db, &checksum_db, hash_tx);
         assert_eq!(count, 2);
         assert_eq!(size, 300);
-        let mut paths: Vec<String> = hash_rx.iter().map(|p| p.to_str().unwrap().to_string()).collect();
+        let mut paths: Vec<String> = hash_rx
+            .iter()
+            .map(|p| p.to_str().unwrap().to_string())
+            .collect();
         paths.sort();
         assert_eq!(paths, vec!["/a/file1.txt", "/a/file2.txt"]);
     }
@@ -284,10 +303,12 @@ mod tests {
         dup_db.put(&md);
         let mut checksum_db = FileChecksumDB::new();
         let (result_tx, result_rx) = crossbeam_channel::unbounded();
-        result_tx.send(crate::common::checksum::FileChecksum::new(
-            std::path::PathBuf::from("/a/file.txt"),
-            String::from("abc123"),
-        )).unwrap();
+        result_tx
+            .send(crate::common::checksum::FileChecksum::new(
+                std::path::PathBuf::from("/a/file.txt"),
+                String::from("abc123"),
+            ))
+            .unwrap();
         drop(result_tx);
         let pb_bar = ProgressBar::hidden();
         let pb_detail = ProgressBar::hidden();
@@ -314,10 +335,12 @@ mod tests {
         let mut checksum_db = FileChecksumDB::new();
         let (result_tx, result_rx) = crossbeam_channel::unbounded();
         // Send a path that is NOT in dup_db
-        result_tx.send(crate::common::checksum::FileChecksum::new(
-            std::path::PathBuf::from("/unknown/file.txt"),
-            String::from("xyz"),
-        )).unwrap();
+        result_tx
+            .send(crate::common::checksum::FileChecksum::new(
+                std::path::PathBuf::from("/unknown/file.txt"),
+                String::from("xyz"),
+            ))
+            .unwrap();
         drop(result_tx);
         let pb_bar = ProgressBar::hidden();
         let pb_detail = ProgressBar::hidden();
@@ -333,7 +356,15 @@ mod tests {
             &pb_detail,
         );
         // Nothing added (path not in dup_db)
-        assert_eq!(checksum_db.get(&FileMetadata::new("/unknown/file.txt", 0, std::time::SystemTime::UNIX_EPOCH, std::time::SystemTime::UNIX_EPOCH)), None);
+        assert_eq!(
+            checksum_db.get(&FileMetadata::new(
+                "/unknown/file.txt",
+                0,
+                std::time::SystemTime::UNIX_EPOCH,
+                std::time::SystemTime::UNIX_EPOCH
+            )),
+            None
+        );
     }
 
     #[test]
@@ -342,7 +373,8 @@ mod tests {
         let db_path = dir.path().join("checksums.txt");
         let dup_db = DuplicateFileDB::new();
         let mut checksum_db = FileChecksumDB::new();
-        let (result_tx, result_rx) = crossbeam_channel::unbounded::<crate::common::checksum::FileChecksum>();
+        let (result_tx, result_rx) =
+            crossbeam_channel::unbounded::<crate::common::checksum::FileChecksum>();
         drop(result_tx);
         let pb_bar = ProgressBar::hidden();
         let pb_detail = ProgressBar::hidden();

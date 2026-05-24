@@ -16,8 +16,8 @@ use crate::common::fs::FileMetadata;
 use log::{trace, warn};
 use std::io;
 mod db;
-mod report;
 mod pipeline;
+mod report;
 use clap_verbosity_flag::Verbosity;
 use std::time::Duration;
 
