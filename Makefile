@@ -118,7 +118,10 @@ clean:
 	cargo clean
 	rm -rf target/
 	rm -rf build/
-	rm -f duplicates.html checksums.txt output.html rmlist.txt
+	rm -f duplicates.html checksums.txt output.html rmlist.txt coverage.txt
+
+coverage.txt:
+	cargo tarpaulin --engine llvm --out Stdout --color never > $@
 
 presubmit: clean check all coverage.txt
 
