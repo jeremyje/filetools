@@ -54,6 +54,54 @@ pub(crate) fn dispatch_checksum_work(
     (count, total_size)
 }
 
+pub(crate) fn collect_checksums(
+    hash_result_rx: &crossbeam_channel::Receiver<crate::common::checksum::FileChecksum>,
+    dup_db: &DuplicateFileDB,
+    checksum_db: &mut FileChecksumDB,
+    db_path: &std::path::Path,
+    checkpoint_interval: Duration,
+    require_checksum: usize,
+    batch_size: usize,
+    pb_checksum_bar: &ProgressBar,
+    pb_detail: &ProgressBar,
+) {
+    let mut num_hash = 0usize;
+    let mut last_checkpoint_time = Instant::now();
+    for hash_result in hash_result_rx {
+        pb_checksum_bar.inc(1);
+        pb_detail.set_message(format!("{}", hash_result.path.display()));
+        let p: &std::path::Path = &hash_result.path;
+        let checksum: &str = &hash_result.checksum;
+        if let Some(dup_val) = dup_db.get(p) {
+            checksum_db.put(dup_val, checksum);
+            num_hash += 1;
+            let now = Instant::now();
+            let elapsed = now.duration_since(last_checkpoint_time);
+            if num_hash % batch_size == 0 || elapsed > checkpoint_interval {
+                last_checkpoint_time = now;
+                match checksum_db.write(db_path) {
+                    Ok(()) => pb_checksum_bar
+                        .set_message(format!("{num_hash}/{require_checksum} checksums")),
+                    Err(error) => warn!(
+                        "cannot save checksums to db '{}', error:{error}",
+                        db_path.display()
+                    ),
+                }
+            }
+        } else {
+            warn!("'{}' has no entry in dup_db.", p.display());
+        }
+    }
+    match checksum_db.write(db_path) {
+        Ok(()) => {}
+        Err(error) => warn!(
+            "cannot save checksums to db '{}', error:{error}",
+            db_path.display()
+        ),
+    }
+    pb_checksum_bar.finish_with_message("Done");
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,5 +192,92 @@ mod tests {
         let mut paths: Vec<String> = hash_rx.iter().map(|p| p.to_str().unwrap().to_string()).collect();
         paths.sort();
         assert_eq!(paths, vec!["/a/file1.txt", "/a/file2.txt"]);
+    }
+
+    #[test]
+    fn test_collect_checksums_updates_db() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("checksums.txt");
+        let t = std::time::SystemTime::UNIX_EPOCH;
+        let md = FileMetadata::new("/a/file.txt", 100, t, t);
+        let mut dup_db = DuplicateFileDB::new();
+        dup_db.put(&md);
+        let mut checksum_db = FileChecksumDB::new();
+        let (result_tx, result_rx) = crossbeam_channel::unbounded();
+        result_tx.send(crate::common::checksum::FileChecksum::new(
+            std::path::PathBuf::from("/a/file.txt"),
+            String::from("abc123"),
+        )).unwrap();
+        drop(result_tx);
+        let pb_bar = ProgressBar::hidden();
+        let pb_detail = ProgressBar::hidden();
+        collect_checksums(
+            &result_rx,
+            &dup_db,
+            &mut checksum_db,
+            &db_path,
+            Duration::from_secs(30),
+            1,
+            100,
+            &pb_bar,
+            &pb_detail,
+        );
+        assert_eq!(checksum_db.get(&md), Some(&String::from("abc123")));
+        assert!(db_path.exists());
+    }
+
+    #[test]
+    fn test_collect_checksums_ignores_unknown_paths() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("checksums.txt");
+        let mut dup_db = DuplicateFileDB::new();
+        let mut checksum_db = FileChecksumDB::new();
+        let (result_tx, result_rx) = crossbeam_channel::unbounded();
+        // Send a path that is NOT in dup_db
+        result_tx.send(crate::common::checksum::FileChecksum::new(
+            std::path::PathBuf::from("/unknown/file.txt"),
+            String::from("xyz"),
+        )).unwrap();
+        drop(result_tx);
+        let pb_bar = ProgressBar::hidden();
+        let pb_detail = ProgressBar::hidden();
+        collect_checksums(
+            &result_rx,
+            &dup_db,
+            &mut checksum_db,
+            &db_path,
+            Duration::from_secs(30),
+            0,
+            100,
+            &pb_bar,
+            &pb_detail,
+        );
+        // Nothing added (path not in dup_db)
+        assert_eq!(checksum_db.get(&FileMetadata::new("/unknown/file.txt", 0, std::time::SystemTime::UNIX_EPOCH, std::time::SystemTime::UNIX_EPOCH)), None);
+    }
+
+    #[test]
+    fn test_collect_checksums_empty_channel() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("checksums.txt");
+        let dup_db = DuplicateFileDB::new();
+        let mut checksum_db = FileChecksumDB::new();
+        let (result_tx, result_rx) = crossbeam_channel::unbounded::<crate::common::checksum::FileChecksum>();
+        drop(result_tx);
+        let pb_bar = ProgressBar::hidden();
+        let pb_detail = ProgressBar::hidden();
+        collect_checksums(
+            &result_rx,
+            &dup_db,
+            &mut checksum_db,
+            &db_path,
+            Duration::from_secs(30),
+            0,
+            100,
+            &pb_bar,
+            &pb_detail,
+        );
+        // Final write still happens (empty file is written)
+        assert!(db_path.exists());
     }
 }
