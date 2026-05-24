@@ -331,7 +331,7 @@ mod tests {
     fn test_collect_checksums_ignores_unknown_paths() {
         let dir = tempfile::tempdir().unwrap();
         let db_path = dir.path().join("checksums.txt");
-        let mut dup_db = DuplicateFileDB::new();
+        let dup_db = DuplicateFileDB::new();
         let mut checksum_db = FileChecksumDB::new();
         let (result_tx, result_rx) = crossbeam_channel::unbounded();
         // Send a path that is NOT in dup_db
