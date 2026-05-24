@@ -37,6 +37,23 @@ pub(crate) fn scan_files(
     (dup_db, files_scanned)
 }
 
+pub(crate) fn dispatch_checksum_work(
+    dup_db: &DuplicateFileDB,
+    checksum_db: &FileChecksumDB,
+    hash_tx: crossbeam_channel::Sender<std::path::PathBuf>,
+) -> (usize, u64) {
+    let mut count = 0;
+    let mut total_size = 0u64;
+    for md in dup_db.m.values() {
+        if checksum_db.get(md).is_none() {
+            hash_tx.send(md.path.clone()).unwrap();
+            count += 1;
+            total_size += md.size;
+        }
+    }
+    (count, total_size)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -76,5 +93,56 @@ mod tests {
         let (db, count) = scan_files(&rx, 0, &pb);
         assert_eq!(count, 2);
         assert_eq!(db.m.len(), 2);
+    }
+
+    #[test]
+    fn test_dispatch_checksum_work_sends_unchecksummed_files() {
+        let mut dup_db = DuplicateFileDB::new();
+        let mut checksum_db = FileChecksumDB::new();
+        let t = std::time::SystemTime::UNIX_EPOCH;
+        let md1 = FileMetadata::new("/a/file1.txt", 1000, t, t);
+        let md2 = FileMetadata::new("/a/file2.txt", 1000, t, t);
+        dup_db.put(&md1);
+        dup_db.put(&md2);
+        checksum_db.put(&md2, "abc123");
+        let (hash_tx, hash_rx) = crossbeam_channel::unbounded();
+        let (count, size) = dispatch_checksum_work(&dup_db, &checksum_db, hash_tx);
+        assert_eq!(count, 1);
+        assert_eq!(size, 1000);
+        let paths: Vec<String> = hash_rx.iter().map(|p| p.to_str().unwrap().to_string()).collect();
+        assert_eq!(paths, vec!["/a/file1.txt"]);
+    }
+
+    #[test]
+    fn test_dispatch_checksum_work_skips_already_checksummed() {
+        let mut dup_db = DuplicateFileDB::new();
+        let mut checksum_db = FileChecksumDB::new();
+        let t = std::time::SystemTime::UNIX_EPOCH;
+        let md = FileMetadata::new("/a/file.txt", 500, t, t);
+        dup_db.put(&md);
+        checksum_db.put(&md, "def456");
+        let (hash_tx, hash_rx) = crossbeam_channel::unbounded();
+        let (count, size) = dispatch_checksum_work(&dup_db, &checksum_db, hash_tx);
+        assert_eq!(count, 0);
+        assert_eq!(size, 0);
+        assert!(hash_rx.is_empty());
+    }
+
+    #[test]
+    fn test_dispatch_checksum_work_sends_all_when_no_checksums() {
+        let mut dup_db = DuplicateFileDB::new();
+        let checksum_db = FileChecksumDB::new();
+        let t = std::time::SystemTime::UNIX_EPOCH;
+        let md1 = FileMetadata::new("/a/file1.txt", 100, t, t);
+        let md2 = FileMetadata::new("/a/file2.txt", 200, t, t);
+        dup_db.put(&md1);
+        dup_db.put(&md2);
+        let (hash_tx, hash_rx) = crossbeam_channel::unbounded();
+        let (count, size) = dispatch_checksum_work(&dup_db, &checksum_db, hash_tx);
+        assert_eq!(count, 2);
+        assert_eq!(size, 300);
+        let mut paths: Vec<String> = hash_rx.iter().map(|p| p.to_str().unwrap().to_string()).collect();
+        paths.sort();
+        assert_eq!(paths, vec!["/a/file1.txt", "/a/file2.txt"]);
     }
 }
