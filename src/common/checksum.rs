@@ -16,20 +16,19 @@ use log::warn;
 use std::fs::File;
 use std::hash::Hasher;
 use std::io;
-use std::io::{BufReader, Read};
+use std::io::Read;
 use std::path::Path;
-use twox_hash::XxHash64;
+use twox_hash::XxHash3_64;
 
 pub(crate) fn xxhash_file(file_path: &Path) -> io::Result<String> {
     let input = File::open(file_path)?;
-    let reader = BufReader::new(input);
-    let digest = xxhash_buffer(reader)?;
+    let digest = xxhash_buffer(input)?;
     Ok(format!("{digest:x}"))
 }
 
 fn xxhash_buffer<R: Read>(mut reader: R) -> io::Result<u64> {
-    let mut hasher = XxHash64::default();
-    let mut read_buffer = [0; 1024];
+    let mut hasher = XxHash3_64::default();
+    let mut read_buffer = vec![0u8; 512 * 1024];
     loop {
         let bytes_read = reader.read(&mut read_buffer)?;
         if bytes_read == 0 {
@@ -90,6 +89,6 @@ mod tests {
     fn test_xxhash_buffer() {
         let text = "abcdefg";
         let result = xxhash_buffer(text.as_bytes());
-        assert_eq!(result.expect("checksum for string"), 1756566643212976685u64);
+        assert_eq!(result.expect("checksum for string"), 6503440028625798447u64);
     }
 }
