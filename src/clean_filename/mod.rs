@@ -68,6 +68,7 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
     Ok(())
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn clean_filename(md: &crate::common::fs::FileMetadata) -> io::Result<()> {
     let (stem, ext) = stem_ext(&md.path);
 

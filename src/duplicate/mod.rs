@@ -58,6 +58,7 @@ pub(crate) struct Args {
     pub(crate) force: bool,
 }
 
+#[allow(clippy::too_many_lines)]
 pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
     let (path_tx, path_rx) = crossbeam_channel::unbounded();
     let (hash_tx, hash_rx) = crossbeam_channel::unbounded();
@@ -100,7 +101,8 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
 
         // Phase 2: Dispatch checksum work to worker pool
         let (require_checksum, require_checksum_size) =
-            pipeline::dispatch_checksum_work(&dup_db, &checksum_db, hash_tx);
+            pipeline::dispatch_checksum_work(&dup_db, &checksum_db, &hash_tx);
+        drop(hash_tx);
         let require_checksum_size_str = crate::common::util::human_size(require_checksum_size);
         pb_checksum_bar.set_length(require_checksum as u64);
         pb_title.set_message(format!(

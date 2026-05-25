@@ -40,7 +40,7 @@ pub(crate) fn scan_files(
 pub(crate) fn dispatch_checksum_work(
     dup_db: &DuplicateFileDB,
     checksum_db: &FileChecksumDB,
-    hash_tx: crossbeam_channel::Sender<std::path::PathBuf>,
+    hash_tx: &crossbeam_channel::Sender<std::path::PathBuf>,
 ) -> (usize, u64) {
     let mut count = 0;
     let mut total_size = 0u64;
@@ -54,6 +54,7 @@ pub(crate) fn dispatch_checksum_work(
     (count, total_size)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn collect_checksums(
     hash_result_rx: &crossbeam_channel::Receiver<crate::common::checksum::FileChecksum>,
     dup_db: &DuplicateFileDB,
@@ -77,7 +78,7 @@ pub(crate) fn collect_checksums(
             num_hash += 1;
             let now = Instant::now();
             let elapsed = now.duration_since(last_checkpoint_time);
-            if num_hash % batch_size == 0 || elapsed > checkpoint_interval {
+            if num_hash.is_multiple_of(batch_size) || elapsed > checkpoint_interval {
                 last_checkpoint_time = now;
                 match checksum_db.write(db_path) {
                     Ok(()) => pb_checksum_bar
@@ -247,7 +248,8 @@ mod tests {
         dup_db.put(&md2);
         checksum_db.put(&md2, "abc123");
         let (hash_tx, hash_rx) = crossbeam_channel::unbounded();
-        let (count, size) = dispatch_checksum_work(&dup_db, &checksum_db, hash_tx);
+        let (count, size) = dispatch_checksum_work(&dup_db, &checksum_db, &hash_tx);
+        drop(hash_tx);
         assert_eq!(count, 1);
         assert_eq!(size, 1000);
         let paths: Vec<String> = hash_rx
@@ -266,7 +268,8 @@ mod tests {
         dup_db.put(&md);
         checksum_db.put(&md, "def456");
         let (hash_tx, hash_rx) = crossbeam_channel::unbounded();
-        let (count, size) = dispatch_checksum_work(&dup_db, &checksum_db, hash_tx);
+        let (count, size) = dispatch_checksum_work(&dup_db, &checksum_db, &hash_tx);
+        drop(hash_tx);
         assert_eq!(count, 0);
         assert_eq!(size, 0);
         assert!(hash_rx.is_empty());
@@ -282,7 +285,8 @@ mod tests {
         dup_db.put(&md1);
         dup_db.put(&md2);
         let (hash_tx, hash_rx) = crossbeam_channel::unbounded();
-        let (count, size) = dispatch_checksum_work(&dup_db, &checksum_db, hash_tx);
+        let (count, size) = dispatch_checksum_work(&dup_db, &checksum_db, &hash_tx);
+        drop(hash_tx);
         assert_eq!(count, 2);
         assert_eq!(size, 300);
         let mut paths: Vec<String> = hash_rx
