@@ -17,10 +17,10 @@ use std::io;
 
 #[derive(clap::Args)]
 pub(crate) struct Args {
-    /// List of files that contain 1 file name per line of files to delete.
+    /// List of rmlist files to process. Each file must contain one file path per line.
     #[arg(long, default_value = ".")]
     pub(crate) path: Vec<std::path::PathBuf>,
-    /// If false, will perform the delete based on the pattern filtering provided by `--delete_pattern`.
+    /// When enabled (default), lists files that would be deleted without actually removing them. Set to false to permanently delete the listed files.
     #[arg(long, default_value_t = true)]
     pub(crate) dry_run: std::primitive::bool,
     /// Force deletion of files when the read-only bit is set.

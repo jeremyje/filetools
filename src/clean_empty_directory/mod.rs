@@ -21,10 +21,10 @@ pub(crate) struct Args {
     /// List of directories that will be scanned to be removed if empty.
     #[arg(long, default_value = ".")]
     pub(crate) path: Vec<std::path::PathBuf>,
-    /// If false, the directories will actually be deleted. By default dry run is enabled and will only report empty directories.
+    /// When enabled (default), reports empty directories without deleting them. Set to false to actually delete empty directories.
     #[arg(long, default_value_t = true)]
     pub(crate) dry_run: std::primitive::bool,
-    /// Force deletion of files when the read-only bit is set.
+    /// Force deletion of directories even when the read-only bit is set.
     #[arg(long, default_value_t = false)]
     pub(crate) force: bool,
 }

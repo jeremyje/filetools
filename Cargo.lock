@@ -685,6 +685,7 @@ dependencies = [
  "data-encoding",
  "dunce",
  "env_logger",
+ "glob",
  "handlebars",
  "humansize",
  "humantime",
