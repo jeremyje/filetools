@@ -23,34 +23,37 @@ use std::time::Duration;
 
 #[derive(clap::Args, Clone)]
 pub(crate) struct Args {
-    /// List of paths to scan.
+    /// List of paths to scan for duplicate files.
     #[arg(long, default_value = ".")]
     pub(crate) path: Vec<std::path::PathBuf>,
-    /// Minimum size of file to consider while scanning.
+    /// Minimum file size in bytes to include in the duplicate scan. Files smaller than this are ignored.
     #[arg(long, default_value_t = 0)]
     pub(crate) min_size: u64,
-    /// List of patterns that match files that should be deleted if they are in a group of duplicates.
+    /// Glob patterns matched against file paths to select duplicates for deletion. A file is deleted when its path matches any delete pattern and none of the keep patterns. Example: --delete-pattern='**/trash/**'
     #[arg(long, default_value = "")]
     pub(crate) delete_pattern: Vec<String>,
-    /// If false, will perform the delete based on the pattern filtering provided by `--delete_pattern`.
+    /// Glob patterns matched against file paths to protect files from deletion, even if they also match a delete pattern. Example: --keep-pattern='**/important/**'
+    #[arg(long, default_value = "")]
+    pub(crate) keep_pattern: Vec<String>,
+    /// When enabled (default), reports which files would be deleted without removing them. Set to false to delete duplicate files matching `--delete-pattern`.
     #[arg(long, default_value_t = true)]
     pub(crate) dry_run: std::primitive::bool,
-    /// Path of where the duplicate file report will be written.
+    /// Path where the duplicate report will be written. Supports .html and .csv formats.
     #[arg(long, default_value = "duplicates.html")]
     pub(crate) output: String,
-    /// If true, if an existing report already exists it will be overwritten.
+    /// Overwrite the output report file if it already exists.
     #[arg(long, default_value_t = true)]
     pub(crate) overwrite: std::primitive::bool,
-    /// Path of where the checksum db is stored. This file makes subsequent runs much faster.
+    /// Path where the checksum database is stored. Reusing this file on subsequent runs avoids re-hashing unchanged files.
     #[arg(long, default_value = "checksums.txt")]
     pub(crate) db: std::path::PathBuf,
-    /// Path where the file list of all duplicates that should be deleted are recorded.
+    /// Path where the list of duplicate files selected for deletion is recorded, one path per line.
     #[arg(long, default_value = "rmlist.txt")]
     pub(crate) rmlist: std::path::PathBuf,
     /// Number of threads for calculating checksums.
     #[arg(long, default_value_t = 2)]
     pub(crate) checksum_threads: usize,
-    /// Interval between checksum checkpoints.
+    /// How often to save the checksum database to disk during scanning. Shorter intervals reduce data loss if the process is interrupted.
     #[arg(long, default_value = "30s", value_parser = humantime::parse_duration)]
     pub(crate) checksum_checkpoint_interval: Duration,
     /// Force deletion of files when the read-only bit is set.
@@ -128,8 +131,12 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
         // Phase 4: Select files to delete
         pb_detail.set_message("Calculating duplicates...");
         let pre_dups = db::get_duplicates(&dup_db, &checksum_db);
-        let delete_files =
-            pipeline::select_deletions(&pre_dups, &thread_args.delete_pattern, &mut dup_db);
+        let delete_files = pipeline::select_deletions(
+            &pre_dups,
+            &thread_args.delete_pattern,
+            &thread_args.keep_pattern,
+            &mut dup_db,
+        );
         let num_delete = u64::try_from(delete_files.len()).expect("cannot convert len to u64.");
 
         // Phase 5: Write rmlist and delete
@@ -355,6 +362,7 @@ mod tests {
             path: vec![std::path::PathBuf::from(".")],
             min_size: 0,
             delete_pattern: vec![],
+            keep_pattern: vec![],
             dry_run: true,
             output: String::new(),
             db: std::path::PathBuf::from("checksums.txt"),

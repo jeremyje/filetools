@@ -33,10 +33,10 @@ static EXTENSION_CORRECTIONS: phf::Map<&'static str, &'static str> = phf_map! {
 
 #[derive(clap::Args, Clone)]
 pub(crate) struct Args {
-    /// List of paths to scan.
+    /// List of paths to scan for files with non-canonical extensions (e.g. .jpeg → .jpg, .mp4 → .m4v).
     #[arg(long, default_value = ".")]
     pub(crate) path: Vec<std::path::PathBuf>,
-    /// If false, will perform the file name canonicalization.
+    /// When enabled (default), reports files that would be renamed without making changes. Set to false to actually rename files.
     #[arg(long, default_value_t = true)]
     pub(crate) dry_run: std::primitive::bool,
 }
