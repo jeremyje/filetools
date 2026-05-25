@@ -32,6 +32,9 @@ pub(crate) struct Args {
     /// List of patterns that match files that should be deleted if they are in a group of duplicates.
     #[arg(long, default_value = "")]
     pub(crate) delete_pattern: Vec<String>,
+    /// List of patterns that match files that should be kept if they are in a group of duplicates.
+    #[arg(long, default_value = "")]
+    pub(crate) keep_pattern: Vec<String>,
     /// If false, will perform the delete based on the pattern filtering provided by `--delete_pattern`.
     #[arg(long, default_value_t = true)]
     pub(crate) dry_run: std::primitive::bool,
@@ -128,8 +131,12 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
         // Phase 4: Select files to delete
         pb_detail.set_message("Calculating duplicates...");
         let pre_dups = db::get_duplicates(&dup_db, &checksum_db);
-        let delete_files =
-            pipeline::select_deletions(&pre_dups, &thread_args.delete_pattern, &mut dup_db);
+        let delete_files = pipeline::select_deletions(
+            &pre_dups,
+            &thread_args.delete_pattern,
+            &thread_args.keep_pattern,
+            &mut dup_db,
+        );
         let num_delete = u64::try_from(delete_files.len()).expect("cannot convert len to u64.");
 
         // Phase 5: Write rmlist and delete
@@ -355,6 +362,7 @@ mod tests {
             path: vec![std::path::PathBuf::from(".")],
             min_size: 0,
             delete_pattern: vec![],
+            keep_pattern: vec![],
             dry_run: true,
             output: String::new(),
             db: std::path::PathBuf::from("checksums.txt"),

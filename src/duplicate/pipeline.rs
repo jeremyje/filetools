@@ -106,13 +106,22 @@ pub(crate) fn collect_checksums(
     pb_checksum_bar.finish_with_message("Done");
 }
 
-pub(crate) fn match_file(path: &std::path::Path, delete_pattern: &[String]) -> bool {
+pub(crate) fn match_file(
+    path: &std::path::Path,
+    delete_pattern: &[String],
+    keep_pattern: &[String],
+) -> bool {
     if delete_pattern.is_empty() {
         return false;
     }
     if let Some(p) = path.to_str() {
         for pattern in delete_pattern {
             if !pattern.is_empty() && p.contains(pattern.as_str()) {
+                for pattern in keep_pattern {
+                    if p.contains(pattern.as_str()) {
+                        return false;
+                    }
+                }
                 return true;
             }
         }
@@ -123,6 +132,7 @@ pub(crate) fn match_file(path: &std::path::Path, delete_pattern: &[String]) -> b
 pub(crate) fn select_deletions(
     pre_dups: &[Vec<FileMetadata>],
     delete_pattern: &[String],
+    keep_pattern: &[String],
     dup_db: &mut DuplicateFileDB,
 ) -> Vec<FileMetadata> {
     let mut delete_files = Vec::new();
@@ -130,7 +140,9 @@ pub(crate) fn select_deletions(
         let max_delete_per_group = dup.len() - 1;
         let mut deleted_in_group = 0;
         for md in dup {
-            if deleted_in_group < max_delete_per_group && match_file(&md.path, delete_pattern) {
+            if deleted_in_group < max_delete_per_group
+                && match_file(&md.path, delete_pattern, keep_pattern)
+            {
                 delete_files.push(md.clone());
                 deleted_in_group += 1;
                 dup_db.remove(md);
@@ -408,14 +420,28 @@ mod tests {
 
     #[test]
     fn test_match_file_no_patterns() {
-        assert!(!match_file(&std::path::PathBuf::from("/a/file.txt"), &[]));
+        assert!(!match_file(
+            &std::path::PathBuf::from("/a/file.txt"),
+            &[],
+            &[]
+        ));
     }
 
     #[test]
     fn test_match_file_matching_pattern() {
         assert!(match_file(
             &std::path::PathBuf::from("/trash/file.txt"),
-            &[String::from("/trash")]
+            &[String::from("/trash")],
+            &[String::from("/important")],
+        ));
+    }
+
+    #[test]
+    fn test_match_file_matching_pattern_and_keep_pattern() {
+        assert!(!match_file(
+            &std::path::PathBuf::from("/trash/file.txt"),
+            &[String::from("/trash")],
+            &[String::from(".txt")],
         ));
     }
 
@@ -423,7 +449,8 @@ mod tests {
     fn test_match_file_empty_pattern_string_ignored() {
         assert!(!match_file(
             &std::path::PathBuf::from("/a/file.txt"),
-            &[String::from("")]
+            &[String::from("")],
+            &[String::from("")],
         ));
     }
 
@@ -434,7 +461,7 @@ mod tests {
         let md1 = FileMetadata::new("/a/file1.txt", 1000, t, t);
         let md2 = FileMetadata::new("/a/file2.txt", 1000, t, t);
         let dups = vec![vec![md1.clone(), md2.clone()]];
-        let result = select_deletions(&dups, &[], &mut dup_db);
+        let result = select_deletions(&dups, &[], &[], &mut dup_db);
         assert!(result.is_empty());
     }
 
@@ -447,7 +474,12 @@ mod tests {
         dup_db.put(&md_keep);
         dup_db.put(&md_delete);
         let dups = vec![vec![md_keep.clone(), md_delete.clone()]];
-        let result = select_deletions(&dups, &[String::from("/trash")], &mut dup_db);
+        let result = select_deletions(
+            &dups,
+            &[String::from("/trash")],
+            &[String::from("/important")],
+            &mut dup_db,
+        );
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].path.to_str().unwrap(), "/trash/file.txt");
         assert!(!dup_db.m.contains_key("/trash/file.txt"));
@@ -463,7 +495,12 @@ mod tests {
         dup_db.put(&md1);
         dup_db.put(&md2);
         let dups = vec![vec![md1.clone(), md2.clone()]];
-        let result = select_deletions(&dups, &[String::from("/trash")], &mut dup_db);
+        let result = select_deletions(
+            &dups,
+            &[String::from("/trash")],
+            &[String::from("/important")],
+            &mut dup_db,
+        );
         // Both match the pattern but only 1 of 2 may be deleted (must keep at least 1)
         assert_eq!(result.len(), 1);
     }
