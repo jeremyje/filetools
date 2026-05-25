@@ -43,24 +43,12 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
     let walk_join = crate::common::fs::threaded_walk_dir(&args.path, path_tx)?;
     let clean_filename_thread = std::thread::spawn(move || {
         let mut scan_count = 0;
-        let mut error_count = 0;
         for md in path_rx {
             scan_count += 1;
             pb_detail.set_message(format!("[{scan_count}] {}", md.path.display()));
-            let filename = md.path.clone();
-            match clean_filename(&md) {
-                Ok(()) => {}
-                Err(error) => {
-                    pb_detail.set_message(format!(
-                        "cannot sanitize filename '{}' {error}.",
-                        filename.display()
-                    ));
-                    error_count += 1;
-                }
-            }
+            clean_filename(&md);
         }
-
-        pb_detail.set_message(format!("Scanned {scan_count} files, {error_count} errors."));
+        pb_detail.set_message(format!("Scanned {scan_count} files."));
     });
 
     walk_join();
@@ -68,13 +56,9 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
     Ok(())
 }
 
-#[allow(clippy::unnecessary_wraps)]
-fn clean_filename(md: &crate::common::fs::FileMetadata) -> io::Result<()> {
+fn clean_filename(md: &crate::common::fs::FileMetadata) {
     let (stem, ext) = stem_ext(&md.path);
-
     trace!("{stem}.{ext}");
-
-    Ok(())
 }
 
 fn stem_ext(path: &std::path::Path) -> (String, String) {

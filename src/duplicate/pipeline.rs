@@ -20,6 +20,12 @@ use log::warn;
 use std::io::Write;
 use std::time::{Duration, Instant};
 
+pub(crate) struct CheckpointConfig {
+    pub(crate) interval: Duration,
+    pub(crate) batch_size: usize,
+    pub(crate) total: usize,
+}
+
 pub(crate) fn scan_files(
     path_rx: &crossbeam_channel::Receiver<FileMetadata>,
     min_size: u64,
@@ -54,15 +60,12 @@ pub(crate) fn dispatch_checksum_work(
     (count, total_size)
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn collect_checksums(
     hash_result_rx: &crossbeam_channel::Receiver<crate::common::checksum::FileChecksum>,
     dup_db: &DuplicateFileDB,
     checksum_db: &mut FileChecksumDB,
     db_path: &std::path::Path,
-    checkpoint_interval: Duration,
-    require_checksum: usize,
-    batch_size: usize,
+    config: &CheckpointConfig,
     pb_checksum_bar: &ProgressBar,
     pb_detail: &ProgressBar,
 ) {
@@ -78,11 +81,11 @@ pub(crate) fn collect_checksums(
             num_hash += 1;
             let now = Instant::now();
             let elapsed = now.duration_since(last_checkpoint_time);
-            if num_hash.is_multiple_of(batch_size) || elapsed > checkpoint_interval {
+            if num_hash.is_multiple_of(config.batch_size) || elapsed > config.interval {
                 last_checkpoint_time = now;
                 match checksum_db.write(db_path) {
                     Ok(()) => pb_checksum_bar
-                        .set_message(format!("{num_hash}/{require_checksum} checksums")),
+                        .set_message(format!("{num_hash}/{} checksums", config.total)),
                     Err(error) => warn!(
                         "cannot save checksums to db '{}', error:{error}",
                         db_path.display()
@@ -321,9 +324,11 @@ mod tests {
             &dup_db,
             &mut checksum_db,
             &db_path,
-            Duration::from_secs(30),
-            1,
-            100,
+            &CheckpointConfig {
+                interval: Duration::from_secs(30),
+                batch_size: 100,
+                total: 1,
+            },
             &pb_bar,
             &pb_detail,
         );
@@ -353,9 +358,11 @@ mod tests {
             &dup_db,
             &mut checksum_db,
             &db_path,
-            Duration::from_secs(30),
-            0,
-            100,
+            &CheckpointConfig {
+                interval: Duration::from_secs(30),
+                batch_size: 100,
+                total: 0,
+            },
             &pb_bar,
             &pb_detail,
         );
@@ -387,9 +394,11 @@ mod tests {
             &dup_db,
             &mut checksum_db,
             &db_path,
-            Duration::from_secs(30),
-            0,
-            100,
+            &CheckpointConfig {
+                interval: Duration::from_secs(30),
+                batch_size: 100,
+                total: 0,
+            },
             &pb_bar,
             &pb_detail,
         );

@@ -58,7 +58,6 @@ pub(crate) struct Args {
     pub(crate) force: bool,
 }
 
-#[allow(clippy::too_many_lines)]
 pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
     let (path_tx, path_rx) = crossbeam_channel::unbounded();
     let (hash_tx, hash_rx) = crossbeam_channel::unbounded();
@@ -110,16 +109,17 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
         ));
 
         // Phase 3: Collect checksum results
-        let batch_size = get_batch_size(num_candidates);
         pb_detail.set_prefix("Checksum");
         pipeline::collect_checksums(
             &hash_result_rx,
             &dup_db,
             &mut checksum_db,
             &thread_args.db,
-            thread_args.checksum_checkpoint_interval,
-            require_checksum,
-            batch_size,
+            &pipeline::CheckpointConfig {
+                interval: thread_args.checksum_checkpoint_interval,
+                batch_size: get_batch_size(num_candidates),
+                total: require_checksum,
+            },
             &pb_checksum_bar,
             &pb_detail,
         );
@@ -130,10 +130,7 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
         let pre_dups = db::get_duplicates(&dup_db, &checksum_db);
         let delete_files =
             pipeline::select_deletions(&pre_dups, &thread_args.delete_pattern, &mut dup_db);
-        let num_delete: u64 = delete_files
-            .len()
-            .try_into()
-            .expect("cannot convert len to u64.");
+        let num_delete = u64::try_from(delete_files.len()).expect("cannot convert len to u64.");
 
         // Phase 5: Write rmlist and delete
         pipeline::write_rmlist(&delete_files, &thread_args.rmlist);
@@ -151,50 +148,25 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
         let delete_size_str = crate::common::util::human_size(delete_size);
 
         // Phase 6: Compute final metrics and write report
-        pb_detail.set_prefix("Report");
-        pb_detail.set_message("Writing...");
         dup_db.remove_unique_size();
         let dups = db::get_duplicates(&dup_db, &checksum_db);
         let (num_dups, dup_size) = calculate_metrics(&dups);
-        let dup_size_str = crate::common::util::human_size(dup_size);
-        let deleted_text = if thread_args.dry_run {
-            "[DRY RUN] Would have deleted"
-        } else {
-            "Deleted"
+        let summary = ReportSummary {
+            files_scanned,
+            num_dups,
+            dup_size: crate::common::util::human_size(dup_size),
+            num_delete,
+            delete_size: delete_size_str,
+            dry_run: thread_args.dry_run,
         };
-        pb_title.set_message(format!(
-            "Scanned {files_scanned} files and found {num_dups} duplicates ({dup_size_str}). {deleted_text} {num_delete} files ({delete_size_str})."
-        ));
-        pb_detail.set_message("Writing report...");
-        let orig = std::path::Path::new(&thread_args.output);
-        if orig.is_file() && !thread_args.overwrite {
-            pb_detail.set_message(format!(
-                "Cannot save report to {output_file} because it already exists, to forcefully overwrite the file use, --overwrite=true",
-                output_file = thread_args.output
-            ));
-        } else if thread_args.output.to_lowercase().ends_with(".csv") {
-            match report::csv_file(&thread_args.output, &dups) {
-                Ok(()) => {
-                    pb_title.finish_with_message(format!("Scanned {files_scanned} files and found {num_dups} duplicates ({dup_size_str}). {deleted_text} {num_delete} files ({delete_size_str}). See {output_file}", output_file = thread_args.output));
-                    pb_detail.finish_and_clear();
-                }
-                Err(error) => pb_detail.set_message(format!(
-                    "cannot write report to '{output_file}', error: {error}",
-                    output_file = thread_args.output
-                )),
-            }
-        } else {
-            match report::html_file(&thread_args.output, &report_title, &dups) {
-                Ok(()) => {
-                    pb_title.finish_with_message(format!("Scanned {files_scanned} files and found {num_dups} duplicates ({dup_size_str}). {deleted_text} {num_delete} files ({delete_size_str}). See {output_file}", output_file = thread_args.output));
-                    pb_detail.finish_and_clear();
-                }
-                Err(error) => pb_detail.set_message(format!(
-                    "cannot write report to '{output_file}', error: {error}",
-                    output_file = thread_args.output
-                )),
-            }
-        }
+        write_report(
+            &thread_args,
+            &report_title,
+            &dups,
+            &summary,
+            &pb_title,
+            &pb_detail,
+        );
     });
 
     let hash_worker_joiner =
@@ -203,6 +175,73 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
     hash_worker_joiner();
     duplicate_thread.join().unwrap();
     Ok(())
+}
+
+struct ReportSummary {
+    files_scanned: usize,
+    num_dups: u64,
+    dup_size: String,
+    num_delete: u64,
+    delete_size: String,
+    dry_run: bool,
+}
+
+fn write_report(
+    args: &Args,
+    report_title: &str,
+    dups: &Vec<Vec<FileMetadata>>,
+    summary: &ReportSummary,
+    pb_title: &indicatif::ProgressBar,
+    pb_detail: &indicatif::ProgressBar,
+) {
+    pb_detail.set_prefix("Report");
+    pb_detail.set_message("Writing...");
+    let deleted_text = if summary.dry_run {
+        "[DRY RUN] Would have deleted"
+    } else {
+        "Deleted"
+    };
+    let ReportSummary {
+        files_scanned,
+        num_dups,
+        dup_size,
+        num_delete,
+        delete_size,
+        ..
+    } = summary;
+    pb_title.set_message(format!(
+        "Scanned {files_scanned} files and found {num_dups} duplicates ({dup_size}). {deleted_text} {num_delete} files ({delete_size})."
+    ));
+    pb_detail.set_message("Writing report...");
+    let orig = std::path::Path::new(&args.output);
+    if orig.is_file() && !args.overwrite {
+        pb_detail.set_message(format!(
+            "Cannot save report to {output_file} because it already exists, to forcefully overwrite the file use, --overwrite=true",
+            output_file = args.output
+        ));
+    } else if args.output.to_lowercase().ends_with(".csv") {
+        match report::csv_file(&args.output, dups) {
+            Ok(()) => {
+                pb_title.finish_with_message(format!("Scanned {files_scanned} files and found {num_dups} duplicates ({dup_size}). {deleted_text} {num_delete} files ({delete_size}). See {output_file}", output_file = args.output));
+                pb_detail.finish_and_clear();
+            }
+            Err(error) => pb_detail.set_message(format!(
+                "cannot write report to '{output_file}', error: {error}",
+                output_file = args.output
+            )),
+        }
+    } else {
+        match report::html_file(&args.output, report_title, dups) {
+            Ok(()) => {
+                pb_title.finish_with_message(format!("Scanned {files_scanned} files and found {num_dups} duplicates ({dup_size}). {deleted_text} {num_delete} files ({delete_size}). See {output_file}", output_file = args.output));
+                pb_detail.finish_and_clear();
+            }
+            Err(error) => pb_detail.set_message(format!(
+                "cannot write report to '{output_file}', error: {error}",
+                output_file = args.output
+            )),
+        }
+    }
 }
 
 fn calculate_metrics(dups: &[Vec<FileMetadata>]) -> (u64, u64) {
