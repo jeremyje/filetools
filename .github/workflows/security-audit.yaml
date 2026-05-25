@@ -25,21 +25,25 @@ jobs:
     steps:
     # Checks out a copy of your repository on the ubuntu-latest machine
     - name: Checkout Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
+      # https://github.com/actions/checkout
 
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
+      # https://github.com/dtolnay/rust-toolchain
       with:
         targets: "x86_64-unknown-linux-gnu,x86_64-pc-windows-gnu"
         components: rustfmt, clippy
 
     - name: Install cargo-audit binary crate
       uses: actions-rs/install@v0.1
+      # https://github.com/actions-rs/install
       with:
         crate: cargo-audit
         version: latest
         use-tool-cache: true
     - name: Security audit
       uses: actions-rs/audit-check@v1
+      # https://github.com/actions-rs/audit-check
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
