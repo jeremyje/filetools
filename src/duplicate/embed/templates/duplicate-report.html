@@ -1,121 +1,190 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Duplicates of {{title}}</title>
 	<style>
-		@import url('https://fonts.googleapis.com/css2?family=Roboto&display=swap');
+		:root {
+			--bg: #e8f2fb;
+			--header-bg: #1565c0;
+			--header-text: #ffffff;
+			--card-bg: #ffffff;
+			--card-border: #90caf9;
+			--card-shadow: rgba(21, 101, 192, 0.12);
+			--row-odd: #e3f2fd;
+			--row-even: #f5faff;
+			--row-hover: #bbdefb;
+			--text: #1a2332;
+			--link: #1565c0;
+			--link-hover: #0d47a1;
+			--size-text: #546e7a;
+			--meta-text: #607d8b;
+			--radius: 8px;
+		}
 
-		body {
-			font-family: 'Roboto', Arial, Helvetica, sans-serif;
-			font-size: 14px;
+		@media (prefers-color-scheme: dark) {
+			:root {
+				--bg: #0d1117;
+				--header-bg: #1c2333;
+				--header-text: #e6edf3;
+				--card-bg: #1c2333;
+				--card-border: #30363d;
+				--card-shadow: rgba(0, 0, 0, 0.4);
+				--row-odd: #1c2333;
+				--row-even: #161b22;
+				--row-hover: #2d3748;
+				--text: #e6edf3;
+				--link: #79c0ff;
+				--link-hover: #a5d6ff;
+				--size-text: #8b949e;
+				--meta-text: #8b949e;
+			}
+		}
+
+		* {
+			box-sizing: border-box;
 			margin: 0;
 			padding: 0;
 		}
 
-		.title {
-			font-weight: 100;
-			font-size: 2em;
-			font-family: Roboto, Arial, Helvetica, sans-serif;
-			width: auto;
-			left: 0;
-			right: 0;
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+			font-size: 14px;
+			background-color: var(--bg);
+			color: var(--text);
+			line-height: 1.5;
+		}
+
+		.header {
+			background-color: var(--header-bg);
+			color: var(--header-text);
+			padding: 0.875rem 1.25rem;
+			border-radius: 0 0 var(--radius) var(--radius);
+			position: sticky;
 			top: 0;
-			border-bottom-left-radius: .5em;
-			border-bottom-right-radius: .5em;
-			color: #EEEEEE;
-			background-color: #003366;
-			padding: .5em;
-			margin-top: 0;
+			z-index: 100;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+		}
+
+		.header h1 {
+			font-weight: 300;
+			font-size: 1.5em;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.header-meta {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 1rem;
+			margin-top: 0.375rem;
+			font-size: 0.8em;
+			opacity: 0.8;
+		}
+
+		.content {
+			padding: 1rem;
+		}
+
+		.group-list {
+			list-style: none;
+			display: flex;
+			flex-direction: column;
+			gap: 0.625rem;
+		}
+
+		.group-card {
+			background-color: var(--card-bg);
+			border: 1px solid var(--card-border);
+			border-radius: var(--radius);
+			box-shadow: 0 1px 4px var(--card-shadow);
+			overflow: hidden;
+			content-visibility: auto;
+			contain-intrinsic-size: 0 80px;
+		}
+
+		.file-list {
+			list-style: none;
+		}
+
+		.file-row {
+			display: flex;
+			align-items: baseline;
+			justify-content: space-between;
+			gap: 1rem;
+			padding: 0.375rem 0.75rem;
+		}
+
+		.file-row:nth-child(odd) {
+			background-color: var(--row-odd);
+		}
+
+		.file-row:nth-child(even) {
+			background-color: var(--row-even);
+		}
+
+		.file-row:hover {
+			background-color: var(--row-hover);
+		}
+
+		.file-link {
+			color: var(--link);
+			text-decoration: none;
+			font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+			font-size: 0.85em;
+			overflow-wrap: anywhere;
+			flex: 1 1 0;
+			min-width: 0;
+		}
+
+		.file-link:hover {
+			color: var(--link-hover);
+			text-decoration: underline;
+		}
+
+		.file-size {
+			color: var(--size-text);
+			font-size: 0.8em;
+			white-space: nowrap;
+			flex-shrink: 0;
+			user-select: none;
+			-webkit-user-select: none;
+		}
+
+		.footer {
 			text-align: center;
-		}
-
-		pre {
-			font-family: Consolas, monospace;
-			font-size: 12px;
-		}
-
-		ul {
-			list-style-type: none;
-		}
-
-		.big-list {
-			border-radius: .25em;
-			border: 2px solid #CCDDFF;
-			background-color: #CCDDFF;
-			list-style-type: none;
-			left: 0;
-			right: 0;
-			width: auto;
-			padding: .25em;
-			margin: .5em;
-		}
-
-		ul.inner-list {
-			left: 0;
-			right: 0;
-			width: auto;
-			padding: .1em;
-			margin: .1em;
-			background-color: transparent;
-			border: 0;
-		}
-
-		ul.inner-list>li {
-			background-color: transparent;
-		}
-
-		ul.inner-list>li:nth-child(even) {
-			background-color: transparent;
-		}
-
-		ul.inner-list>li:nth-child(even):hover {
-			background-color: transparent;
-		}
-
-		ul.inner-list>li:nth-child(odd) {
-			background-color: transparent;
-		}
-
-		ul.inner-list>li:nth-child(odd):hover {
-			background-color: transparent;
-		}
-
-		.big-list li {
-			padding: .25em;
-		}
-
-		.big-list li:nth-child(odd) {
-			background-color: #DDEEFF;
-		}
-
-		.big-list li:nth-child(odd):hover {
-			background-color: #AABBCC;
-		}
-
-		.big-list li:nth-child(even) {
-			background-color: #CCDDEE;
-		}
-
-		.big-list li:nth-child(even):hover {
-			background-color: #99AABB;
+			padding: 1.25rem 1rem;
+			color: var(--meta-text);
+			font-size: 0.8em;
 		}
 	</style>
 </head>
-
 <body>
-	<h1 class="title">Duplicates of: {{title}}</h1>
-	<ul class="big-list">
-    {{#each groups}}
-		<li>
-			<ul class="inner-list">
-        {{#each this}}
-				<li><a href="file://{{path}}">{{path}}</a> {{humansize size ~}}</li>
-        {{/each}}
-			</ul>
-		</li>
-    {{/each}}
-	</ul>
+	<div class="header">
+		<h1>Duplicates of: {{title}}</h1>
+		<div class="header-meta">
+			<span>{{num_groups}} duplicate groups</span>{{#if timestamp}}
+			<span>Generated: {{timestamp}}</span>
+			<span>Duration: {{duration}}</span>{{/if}}
+		</div>
+	</div>
+	<div class="content">
+		<ul class="group-list">
+		{{#each groups}}
+			<li class="group-card">
+				<ul class="file-list">
+				{{#each this}}
+					<li class="file-row"><a href="file://{{path}}" class="file-link">{{path}}</a><span class="file-size" aria-hidden="true">{{humansize size ~}}</span></li>
+				{{/each}}
+				</ul>
+			</li>
+		{{/each}}
+		</ul>
+	</div>
+	{{#if timestamp}}
+	<div class="footer">Report generated on {{timestamp}} · Completed in {{duration}}</div>
+	{{/if}}
 </body>
-
 </html>
