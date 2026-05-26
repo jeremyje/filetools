@@ -434,7 +434,11 @@ mod tests {
 
     #[test]
     fn test_match_file_no_patterns() {
-        assert!(!match_file(&std::path::PathBuf::from("/a/file.txt"), &[], &[]));
+        assert!(!match_file(
+            &std::path::PathBuf::from("/a/file.txt"),
+            &[],
+            &[]
+        ));
     }
 
     #[test]
