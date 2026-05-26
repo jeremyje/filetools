@@ -129,14 +129,17 @@
 			background-color: var(--row-hover);
 		}
 
+		.file-path {
+			flex: 1 1 0;
+			min-width: 0;
+			overflow-wrap: anywhere;
+			font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+			font-size: 0.85em;
+		}
+
 		.file-link {
 			color: var(--link);
 			text-decoration: none;
-			font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-			font-size: 0.85em;
-			overflow-wrap: anywhere;
-			flex: 1 1 0;
-			min-width: 0;
 		}
 
 		.file-link:hover {
@@ -176,7 +179,7 @@
 			<li class="group-card">
 				<ul class="file-list">
 				{{#each this}}
-					<li class="file-row"><a href="file://{{path}}" class="file-link">{{path}}</a><span class="file-size" aria-hidden="true">{{humansize size ~}}</span></li>
+					<li class="file-row"><span class="file-path"><a href="file://{{path}}" class="file-link">{{path}}</a></span><span class="file-size" aria-hidden="true">{{humansize size ~}}</span></li>
 				{{/each}}
 				</ul>
 			</li>
