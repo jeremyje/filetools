@@ -13,8 +13,10 @@
 // limitations under the License.
 
 use crate::common::fs::FileMetadata;
+use chrono::Local;
 use log::{trace, warn};
 use std::io;
+use std::time::Instant;
 mod db;
 mod pipeline;
 mod report;
@@ -81,6 +83,8 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
     let walk_join = crate::common::fs::threaded_walk_dir(&args.path, path_tx)?;
 
     let duplicate_thread = std::thread::spawn(move || {
+        let scan_start = Instant::now();
+        let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S %z").to_string();
         let mut checksum_db = crate::common::db::FileChecksumDB::new();
         match checksum_db.load(&thread_args.db) {
             Ok(()) => {}
@@ -166,11 +170,14 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
             delete_size: delete_size_str,
             dry_run: thread_args.dry_run,
         };
+        let duration = humantime::format_duration(scan_start.elapsed()).to_string();
         write_report(
             &thread_args,
             &report_title,
             &dups,
             &summary,
+            &timestamp,
+            &duration,
             &pb_title,
             &pb_detail,
         );
@@ -198,6 +205,8 @@ fn write_report(
     report_title: &str,
     dups: &Vec<Vec<FileMetadata>>,
     summary: &ReportSummary,
+    timestamp: &str,
+    duration: &str,
     pb_title: &indicatif::ProgressBar,
     pb_detail: &indicatif::ProgressBar,
 ) {
@@ -238,7 +247,7 @@ fn write_report(
             )),
         }
     } else {
-        match report::html_file(&args.output, report_title, dups) {
+        match report::html_file(&args.output, report_title, dups, timestamp, duration) {
             Ok(()) => {
                 pb_title.finish_with_message(format!("Scanned {files_scanned} files and found {num_dups} duplicates ({dup_size}). {deleted_text} {num_delete} files ({delete_size}). See {output_file}", output_file = args.output));
                 pb_detail.finish_and_clear();
