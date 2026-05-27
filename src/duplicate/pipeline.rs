@@ -110,7 +110,14 @@ pub(crate) fn compile_patterns(patterns: &[String]) -> Vec<glob::Pattern> {
     patterns
         .iter()
         .filter(|p| !p.is_empty())
-        .filter_map(|p| glob::Pattern::new(p).ok())
+        .map(|p| {
+            if p.chars().any(|c| matches!(c, '*' | '?' | '[' | ']')) {
+                p.to_string()
+            } else {
+                format!("*{p}*")
+            }
+        })
+        .filter_map(|p| glob::Pattern::new(&p).ok())
         .collect()
 }
 
@@ -430,6 +437,30 @@ mod tests {
 
     fn p(s: &str) -> glob::Pattern {
         glob::Pattern::new(s).unwrap()
+    }
+
+    #[test]
+    fn test_compile_patterns_wraps_literals() {
+        let patterns = compile_patterns(&[String::from("Downloads")]);
+        assert_eq!(patterns.len(), 1);
+        assert!(patterns[0].matches("/home/user/Downloads/file.txt"));
+        assert!(patterns[0].matches("E:\\Downloads\\file.txt"));
+        assert!(!patterns[0].matches("/home/user/Other/file.txt"));
+    }
+
+    #[test]
+    fn test_compile_patterns_preserves_wildcards() {
+        let patterns = compile_patterns(&[String::from("**/Downloads/**")]);
+        assert_eq!(patterns.len(), 1);
+        assert_eq!(patterns[0].as_str(), "**/Downloads/**");
+    }
+
+    #[test]
+    fn test_compile_patterns_wraps_literal_with_spaces() {
+        let patterns = compile_patterns(&[String::from("spaces ")]);
+        assert_eq!(patterns.len(), 1);
+        assert!(patterns[0].matches("/home/spaces stuff/file.txt"));
+        assert!(!patterns[0].matches("/home/user/file.txt"));
     }
 
     #[test]

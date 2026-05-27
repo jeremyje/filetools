@@ -32,8 +32,10 @@ extern crate concat_string;
 #[command(author, version, about, long_about = None)]
 #[command(next_line_help = true)]
 struct Cli {
+    /// The subcommand to run.
     #[command(subcommand)]
     command: Commands,
+    /// Controls log output level. Use -v for info, -vv for debug, -vvv for trace. Use -q to suppress warnings, -qq for silence.
     #[command(flatten)]
     verbose: Verbosity,
 }
