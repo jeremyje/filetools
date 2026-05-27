@@ -14,6 +14,7 @@
 use clap_verbosity_flag::Verbosity;
 use log::warn;
 use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
 #[derive(clap::Args)]
 pub(crate) struct Args {
@@ -26,6 +27,9 @@ pub(crate) struct Args {
     /// Number of threads for calculating checksums.
     #[arg(long, default_value_t = 2)]
     pub(crate) checksum_threads: usize,
+    /// How often to save the checksum database to disk during scanning. Shorter intervals reduce data loss if the process is interrupted.
+    #[arg(long, default_value = "30s", value_parser = humantime::parse_duration)]
+    pub(crate) checksum_checkpoint_interval: Duration,
 }
 
 pub(crate) fn run(args: &Args, verbose: Verbosity) -> std::io::Result<()> {
@@ -44,6 +48,7 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> std::io::Result<()> {
         crate::common::checksum::worker_pool(args.checksum_threads, hash_result_tx, &hash_rx);
 
     let checksum_db_filepath = std::path::PathBuf::from(&args.output);
+    let checkpoint_interval = args.checksum_checkpoint_interval;
 
     let checksummer_thread = std::thread::spawn(move || {
         pb_title.set_prefix("Checksum");
@@ -75,6 +80,7 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> std::io::Result<()> {
         drop(hash_tx);
 
         pb_detail.set_prefix("Checksum");
+        let mut last_checkpoint_time = Instant::now();
         for hash_result in hash_result_rx {
             let p: &std::path::Path = &hash_result.path;
 
@@ -83,6 +89,17 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> std::io::Result<()> {
                     pb_detail.set_message(format!("{}", md.path.display()));
                     pb_checksum_bar.inc(1);
                     checksum_db.put(md, &hash_result.checksum);
+                    let now = Instant::now();
+                    if now.duration_since(last_checkpoint_time) >= checkpoint_interval {
+                        last_checkpoint_time = now;
+                        match checksum_db.write(&checksum_db_filepath) {
+                            Ok(()) => {}
+                            Err(error) => warn!(
+                                "cannot save checksums to '{}', error: {error}",
+                                checksum_db_filepath.display()
+                            ),
+                        }
+                    }
                 }
             }
         }
@@ -110,6 +127,7 @@ mod tests {
             path: vec![std::path::PathBuf::from(".")],
             output: std::path::PathBuf::from("checksums.txt"),
             checksum_threads: 2,
+            checksum_checkpoint_interval: humantime::parse_duration("10s").unwrap(),
         };
         run(&args, Verbosity::new(0, 0)).unwrap();
     }
