@@ -27,8 +27,50 @@ use std::{
 use crate::common::fs::FileMetadata;
 
 static EXTENSION_CORRECTIONS: phf::Map<&'static str, &'static str> = phf_map! {
-  "jpeg" => "jpg",
-  "mp4" => "m4v",
+  // Images – canonical: jpg, tif, heic, bmp
+  "jpeg"  => "jpg",
+  "jpe"   => "jpg",
+  "jfif"  => "jpg",
+  "tiff"  => "tif",
+  "heif"  => "heic",
+  "dib"   => "bmp",   // Device-Independent Bitmap alias
+  // Video – canonical: m4v, mpg, flv, 3gp, wmv
+  "mp4"   => "m4v",
+  "mpeg"  => "mpg",
+  "mpeg4" => "m4v",
+  "m2v"   => "mpg",   // MPEG-2 video
+  "3gpp"  => "3gp",   // 3GPP mobile video
+  "3gp2"  => "3gp",
+  "3g2"   => "3gp",
+  "f4v"   => "flv",   // Flash Video variant
+  "asf"   => "wmv",   // Advanced Systems Format (Windows Media container)
+  // Audio – canonical: mp3, aif, wav, m4a, ogg, flac, aac
+  "aiff"  => "aif",
+  "aifc"  => "aif",   // AIFF-C compressed variant
+  "wave"  => "wav",
+  "m4b"   => "m4a",   // iTunes audiobook → generic MPEG-4 audio
+  "m4r"   => "m4a",   // iPhone ringtone → generic MPEG-4 audio
+  "oga"   => "ogg",   // Ogg audio-only container alias
+  "spx"   => "ogg",   // Speex audio (also in Ogg container)
+  "opus"  => "ogg",   // Opus audio (Ogg container)
+  "mp2"   => "mp3",   // MPEG-1 Audio Layer II → Layer III
+  // Markup / text – canonical: html, txt, md, yaml, xml
+  "htm"      => "html",
+  "xhtml"    => "html",
+  "shtml"    => "html",
+  "text"     => "txt",
+  "markdown" => "md",
+  "mkd"      => "md",
+  "mdown"    => "md",
+  "mdwn"     => "md",
+  "yml"      => "yaml",  // YAML spec recommends .yaml
+  // Archives – preserve the tar layer in the extension
+  "tgz"      => "tar.gz",
+  "taz"      => "tar.gz",
+  "tbz2"     => "tar.bz2",
+  "tbz"      => "tar.bz2",
+  "txz"      => "tar.xz",
+  "tzst"     => "tar.zst",
 };
 
 #[derive(clap::Args, Clone)]
@@ -110,13 +152,23 @@ fn canonicalize_path(p: &Path) -> Option<PathBuf> {
 }
 
 fn canonicalize_filename(file_stem: &str, extension: &str) -> Option<PathBuf> {
-    if let Some(correction) = EXTENSION_CORRECTIONS.get(extension.to_lowercase().as_str()) {
-        let mut new_file_name = file_stem.to_string();
-        new_file_name.push('.');
-        new_file_name.push_str(correction);
-        return Some(PathBuf::from(new_file_name));
-    }
-    None
+    let ext_lower = extension.to_lowercase();
+    let new_ext = if let Some(&correction) = EXTENSION_CORRECTIONS.get(ext_lower.as_str()) {
+        correction.to_string()
+    } else if ext_lower != extension {
+        ext_lower
+    } else {
+        return None;
+    };
+    // Avoid double-tar: "archive.tar.tgz" → "archive.tar.gz", not "archive.tar.tar.gz"
+    let stem = if new_ext.starts_with("tar.")
+        && file_stem.to_lowercase().ends_with(".tar")
+    {
+        &file_stem[..file_stem.len() - 4]
+    } else {
+        file_stem
+    };
+    Some(PathBuf::from(format!("{stem}.{new_ext}")))
 }
 
 #[cfg(test)]
@@ -182,5 +234,201 @@ mod tests {
     #[test]
     fn canonicalize_filename_no_correct_extension() {
         assert_eq!(None, canonicalize_filename("abc", "jpg"));
+    }
+
+    #[test]
+    fn canonicalize_filename_uppercase_to_lowercase() {
+        assert_eq!(
+            Some(PathBuf::from("abc.jpg")),
+            canonicalize_filename("abc", "JPG")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.jpg")),
+            canonicalize_filename("abc", "JPEG")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.png")),
+            canonicalize_filename("abc", "PNG")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.m4v")),
+            canonicalize_filename("abc", "MP4")
+        );
+    }
+
+    #[test]
+    fn canonicalize_filename_extended_corrections() {
+        // Images
+        assert_eq!(
+            Some(PathBuf::from("abc.jpg")),
+            canonicalize_filename("abc", "jpe")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.jpg")),
+            canonicalize_filename("abc", "jfif")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.tif")),
+            canonicalize_filename("abc", "tiff")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.heic")),
+            canonicalize_filename("abc", "heif")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.bmp")),
+            canonicalize_filename("abc", "dib")
+        );
+        // Video
+        assert_eq!(
+            Some(PathBuf::from("abc.mpg")),
+            canonicalize_filename("abc", "mpeg")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.mpg")),
+            canonicalize_filename("abc", "m2v")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.3gp")),
+            canonicalize_filename("abc", "3gpp")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.3gp")),
+            canonicalize_filename("abc", "3g2")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.flv")),
+            canonicalize_filename("abc", "f4v")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.wmv")),
+            canonicalize_filename("abc", "asf")
+        );
+        // Audio
+        assert_eq!(
+            Some(PathBuf::from("abc.aif")),
+            canonicalize_filename("abc", "aiff")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.aif")),
+            canonicalize_filename("abc", "aifc")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.wav")),
+            canonicalize_filename("abc", "wave")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.m4a")),
+            canonicalize_filename("abc", "m4b")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.m4a")),
+            canonicalize_filename("abc", "m4r")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.ogg")),
+            canonicalize_filename("abc", "oga")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.mp3")),
+            canonicalize_filename("abc", "mp2")
+        );
+        // Markup / text
+        assert_eq!(
+            Some(PathBuf::from("abc.html")),
+            canonicalize_filename("abc", "htm")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.html")),
+            canonicalize_filename("abc", "xhtml")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.txt")),
+            canonicalize_filename("abc", "text")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.md")),
+            canonicalize_filename("abc", "markdown")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.md")),
+            canonicalize_filename("abc", "mkd")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.yaml")),
+            canonicalize_filename("abc", "yml")
+        );
+        // Archives
+        assert_eq!(
+            Some(PathBuf::from("abc.tar.gz")),
+            canonicalize_filename("abc", "tgz")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.tar.gz")),
+            canonicalize_filename("abc", "taz")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.tar.bz2")),
+            canonicalize_filename("abc", "tbz2")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.tar.bz2")),
+            canonicalize_filename("abc", "tbz")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.tar.xz")),
+            canonicalize_filename("abc", "txz")
+        );
+        assert_eq!(
+            Some(PathBuf::from("abc.tar.zst")),
+            canonicalize_filename("abc", "tzst")
+        );
+    }
+
+    #[test]
+    fn canonicalize_filename_no_double_tar() {
+        // stem already contains .tar — must not produce .tar.tar.*
+        assert_eq!(
+            Some(PathBuf::from("archive.tar.gz")),
+            canonicalize_filename("archive.tar", "tgz")
+        );
+        assert_eq!(
+            Some(PathBuf::from("archive.tar.bz2")),
+            canonicalize_filename("archive.tar", "tbz2")
+        );
+        assert_eq!(
+            Some(PathBuf::from("archive.tar.xz")),
+            canonicalize_filename("archive.tar", "txz")
+        );
+        // Case-insensitive stem check: .TAR is stripped too
+        assert_eq!(
+            Some(PathBuf::from("archive.tar.gz")),
+            canonicalize_filename("archive.TAR", "tgz")
+        );
+        // Normal case unaffected
+        assert_eq!(
+            Some(PathBuf::from("archive.tar.gz")),
+            canonicalize_filename("archive", "tgz")
+        );
+    }
+
+    #[test]
+    fn canonicalize_filenames_uppercase() {
+        let tmp_dir = tempdir().expect("create directory");
+
+        let a_upper = Path::join(tmp_dir.path(), "a.JPG");
+        let a_lower = Path::join(tmp_dir.path(), "a.jpg");
+        fs::write(&a_upper, b"img").expect("write file");
+
+        run(
+            &Args {
+                path: vec![PathBuf::from(tmp_dir.path())],
+                dry_run: false,
+            },
+            Verbosity::new(0, 0),
+        )
+        .expect("canonical");
+        assert_eq!(false, a_upper.exists());
+        assert!(a_lower.exists());
     }
 }

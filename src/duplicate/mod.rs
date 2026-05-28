@@ -132,31 +132,14 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
         );
         pb_checksum_bar.finish_and_clear();
 
-        // Phase 4: Select files to delete
-        pb_detail.set_message("Calculating duplicates...");
-        let pre_dups = db::get_duplicates(&dup_db, &checksum_db);
-        let delete_files = pipeline::select_deletions(
-            &pre_dups,
-            &thread_args.delete_pattern,
-            &thread_args.keep_pattern,
+        // Phase 4+5: Select, record, and delete duplicates
+        let (num_delete, delete_size_str) = process_deletions(
             &mut dup_db,
-        );
-        let num_delete = u64::try_from(delete_files.len()).expect("cannot convert len to u64.");
-
-        // Phase 5: Write rmlist and delete
-        pipeline::write_rmlist(&delete_files, &thread_args.rmlist);
-        pb_detail.set_prefix("Deleting");
-        pb_detail.set_message("Removing duplicates...");
-        pb_delete_bar.set_length(num_delete);
-        let delete_size = pipeline::delete_duplicates(
-            &delete_files,
-            thread_args.dry_run,
-            thread_args.force,
+            &checksum_db,
+            &thread_args,
             &pb_detail,
             &pb_delete_bar,
         );
-        pb_delete_bar.finish_and_clear();
-        let delete_size_str = crate::common::util::human_size(delete_size);
 
         // Phase 6: Compute final metrics and write report
         dup_db.remove_unique_size();
@@ -169,15 +152,14 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
             num_delete,
             delete_size: delete_size_str,
             dry_run: thread_args.dry_run,
+            timestamp,
+            duration: humantime::format_duration(scan_start.elapsed()).to_string(),
         };
-        let duration = humantime::format_duration(scan_start.elapsed()).to_string();
         write_report(
             &thread_args,
             &report_title,
             &dups,
             &summary,
-            &timestamp,
-            &duration,
             &pb_title,
             &pb_detail,
         );
@@ -198,6 +180,35 @@ struct ReportSummary {
     num_delete: u64,
     delete_size: String,
     dry_run: bool,
+    timestamp: String,
+    duration: String,
+}
+
+fn process_deletions(
+    dup_db: &mut db::DuplicateFileDB,
+    checksum_db: &crate::common::db::FileChecksumDB,
+    args: &Args,
+    pb_detail: &indicatif::ProgressBar,
+    pb_delete_bar: &indicatif::ProgressBar,
+) -> (u64, String) {
+    pb_detail.set_message("Calculating duplicates...");
+    let pre_dups = db::get_duplicates(dup_db, checksum_db);
+    let delete_files =
+        pipeline::select_deletions(&pre_dups, &args.delete_pattern, &args.keep_pattern, dup_db);
+    let num_delete = u64::try_from(delete_files.len()).expect("cannot convert len to u64.");
+    pipeline::write_rmlist(&delete_files, &args.rmlist);
+    pb_detail.set_prefix("Deleting");
+    pb_detail.set_message("Removing duplicates...");
+    pb_delete_bar.set_length(num_delete);
+    let delete_size = pipeline::delete_duplicates(
+        &delete_files,
+        args.dry_run,
+        args.force,
+        pb_detail,
+        pb_delete_bar,
+    );
+    pb_delete_bar.finish_and_clear();
+    (num_delete, crate::common::util::human_size(delete_size))
 }
 
 fn write_report(
@@ -205,8 +216,6 @@ fn write_report(
     report_title: &str,
     dups: &Vec<Vec<FileMetadata>>,
     summary: &ReportSummary,
-    timestamp: &str,
-    duration: &str,
     pb_title: &indicatif::ProgressBar,
     pb_detail: &indicatif::ProgressBar,
 ) {
@@ -247,7 +256,13 @@ fn write_report(
             )),
         }
     } else {
-        match report::html_file(&args.output, report_title, dups, timestamp, duration) {
+        match report::html_file(
+            &args.output,
+            report_title,
+            dups,
+            &summary.timestamp,
+            &summary.duration,
+        ) {
             Ok(()) => {
                 pb_title.finish_with_message(format!("Scanned {files_scanned} files and found {num_dups} duplicates ({dup_size}). {deleted_text} {num_delete} files ({delete_size}). See {output_file}", output_file = args.output));
                 pb_detail.finish_and_clear();
