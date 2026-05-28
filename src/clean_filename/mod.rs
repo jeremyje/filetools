@@ -13,8 +13,9 @@
 // limitations under the License.
 
 use clap_verbosity_flag::Verbosity;
-use log::trace;
+use log::{info, warn};
 use std::io;
+use std::path::Path;
 
 #[derive(clap::Args, Clone)]
 pub(crate) struct Args {
@@ -46,7 +47,7 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
         for md in path_rx {
             scan_count += 1;
             pb_detail.set_message(format!("[{scan_count}] {}", md.path.display()));
-            clean_filename(&md);
+            clean_filename(&md, args.dry_run, args.overwrite);
         }
         pb_detail.set_message(format!("Scanned {scan_count} files."));
     });
@@ -56,9 +57,60 @@ pub(crate) fn run(args: &Args, verbose: Verbosity) -> io::Result<()> {
     Ok(())
 }
 
-fn clean_filename(md: &crate::common::fs::FileMetadata) {
+/// Returns a cleaned version of a filename stem: URL-decoded, then stripped of
+/// characters that are not alphanumeric, space, hyphen, underscore, or period.
+fn clean_stem(stem: &str) -> String {
+    let decoded =
+        urlencoding::decode(stem).map_or_else(|_| stem.to_string(), std::borrow::Cow::into_owned);
+
+    decoded
+        .chars()
+        .filter(|c| c.is_alphanumeric() || matches!(c, ' ' | '-' | '_' | '.'))
+        .collect()
+}
+
+fn clean_filename(md: &crate::common::fs::FileMetadata, dry_run: bool, overwrite: bool) {
     let (stem, ext) = stem_ext(&md.path);
-    trace!("{stem}.{ext}");
+    let cleaned = clean_stem(&stem);
+
+    if cleaned == stem {
+        return;
+    }
+
+    if cleaned.is_empty() {
+        warn!("Skipping '{}': cleaned stem is empty", md.path.display());
+        return;
+    }
+
+    let parent = md.path.parent().unwrap_or(Path::new("."));
+    let new_name = if ext.is_empty() {
+        cleaned
+    } else {
+        format!("{cleaned}.{ext}")
+    };
+    let new_path = parent.join(&new_name);
+
+    if new_path == md.path {
+        return;
+    }
+
+    if !overwrite && new_path.exists() {
+        warn!(
+            "Skipping '{}': destination '{}' already exists",
+            md.path.display(),
+            new_path.display()
+        );
+        return;
+    }
+
+    if dry_run {
+        info!("DRY RUN: {} => {}", md.path.display(), new_path.display());
+    } else {
+        match crate::common::fs::move_file(md.path.clone(), new_path.clone(), false) {
+            Ok(()) => info!("{} => {}", md.path.display(), new_path.display()),
+            Err(e) => warn!("Cannot rename '{}': {e}", md.path.display()),
+        }
+    }
 }
 
 fn stem_ext(path: &std::path::Path) -> (String, String) {
@@ -78,6 +130,9 @@ fn stem_ext(path: &std::path::Path) -> (String, String) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use tempfile::tempdir;
 
     #[test]
     fn test_stem_ext() {
@@ -85,5 +140,132 @@ mod tests {
             stem_ext(&std::path::Path::new("test/abc.123")),
             (String::from("abc"), String::from("123"))
         );
+    }
+
+    #[test]
+    fn test_clean_stem_url_encoded() {
+        assert_eq!(clean_stem("hello%20world"), String::from("hello world"));
+        assert_eq!(
+            clean_stem("file%20name%20here"),
+            String::from("file name here")
+        );
+        assert_eq!(clean_stem("caf%C3%A9"), String::from("café"));
+    }
+
+    #[test]
+    fn test_clean_stem_removes_emojis() {
+        assert_eq!(clean_stem("hello🎉world"), String::from("helloworld"));
+        assert_eq!(clean_stem("photo📷2024"), String::from("photo2024"));
+        assert_eq!(clean_stem("🔥hotfile🔥"), String::from("hotfile"));
+    }
+
+    #[test]
+    fn test_clean_stem_removes_apostrophes() {
+        assert_eq!(clean_stem("it\u{2019}s"), String::from("its"));
+        assert_eq!(clean_stem("can't"), String::from("cant"));
+        assert_eq!(clean_stem("O\u{2018}Brien"), String::from("OBrien"));
+    }
+
+    #[test]
+    fn test_clean_stem_keeps_allowed_chars() {
+        assert_eq!(
+            clean_stem("my-file_name.backup"),
+            String::from("my-file_name.backup")
+        );
+        assert_eq!(clean_stem("hello world"), String::from("hello world"));
+        assert_eq!(clean_stem("café"), String::from("café"));
+    }
+
+    #[test]
+    fn test_clean_stem_no_change() {
+        assert_eq!(clean_stem("normal_file"), String::from("normal_file"));
+    }
+
+    #[test]
+    fn test_clean_filename_url_encoded_file() {
+        let tmp_dir = tempdir().expect("create directory");
+
+        let encoded = Path::join(tmp_dir.path(), "hello%20world.txt");
+        let decoded = Path::join(tmp_dir.path(), "hello world.txt");
+        fs::write(&encoded, b"content").expect("write file");
+
+        run(
+            &Args {
+                path: vec![PathBuf::from(tmp_dir.path())],
+                dry_run: false,
+                overwrite: false,
+            },
+            Verbosity::new(0, 0),
+        )
+        .expect("clean_filename");
+
+        assert_eq!(false, encoded.exists());
+        assert!(decoded.exists());
+    }
+
+    #[test]
+    fn test_clean_filename_dry_run_no_rename() {
+        let tmp_dir = tempdir().expect("create directory");
+
+        let encoded = Path::join(tmp_dir.path(), "hello%20world.txt");
+        fs::write(&encoded, b"content").expect("write file");
+
+        run(
+            &Args {
+                path: vec![PathBuf::from(tmp_dir.path())],
+                dry_run: true,
+                overwrite: false,
+            },
+            Verbosity::new(0, 0),
+        )
+        .expect("clean_filename");
+
+        assert!(encoded.exists());
+    }
+
+    #[test]
+    fn test_clean_filename_no_overwrite() {
+        let tmp_dir = tempdir().expect("create directory");
+
+        let encoded = Path::join(tmp_dir.path(), "hello%20world.txt");
+        let decoded = Path::join(tmp_dir.path(), "hello world.txt");
+        fs::write(&encoded, b"encoded").expect("write file");
+        fs::write(&decoded, b"existing").expect("write file");
+
+        run(
+            &Args {
+                path: vec![PathBuf::from(tmp_dir.path())],
+                dry_run: false,
+                overwrite: false,
+            },
+            Verbosity::new(0, 0),
+        )
+        .expect("clean_filename");
+
+        assert!(encoded.exists());
+        assert_eq!(fs::read(&decoded).unwrap(), b"existing");
+    }
+
+    #[test]
+    fn test_clean_filename_with_overwrite() {
+        let tmp_dir = tempdir().expect("create directory");
+
+        let encoded = Path::join(tmp_dir.path(), "hello%20world.txt");
+        let decoded = Path::join(tmp_dir.path(), "hello world.txt");
+        fs::write(&encoded, b"encoded").expect("write file");
+        fs::write(&decoded, b"existing").expect("write file");
+
+        run(
+            &Args {
+                path: vec![PathBuf::from(tmp_dir.path())],
+                dry_run: false,
+                overwrite: true,
+            },
+            Verbosity::new(0, 0),
+        )
+        .expect("clean_filename");
+
+        assert_eq!(false, encoded.exists());
+        assert_eq!(fs::read(&decoded).unwrap(), b"encoded");
     }
 }

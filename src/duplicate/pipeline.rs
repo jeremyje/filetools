@@ -112,7 +112,7 @@ pub(crate) fn compile_patterns(patterns: &[String]) -> Vec<glob::Pattern> {
         .filter(|p| !p.is_empty())
         .map(|p| {
             if p.chars().any(|c| matches!(c, '*' | '?' | '[' | ']')) {
-                p.to_string()
+                p.clone()
             } else {
                 format!("*{p}*")
             }
