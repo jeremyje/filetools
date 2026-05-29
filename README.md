@@ -17,6 +17,8 @@ Commands:
           Calculates checksums (xxhash3-64bit) of files in selected directories
   clean-empty-directory
           Removes directories that do not contain any files
+  clean-filename
+          Scans files and renames those with non-standard naming patterns (e.g., URL-encoded characters)
   duplicate
           Finds duplicate files and conditionally deletes them
   rmlist
