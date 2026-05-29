@@ -48,7 +48,7 @@ enum Commands {
     Checksum(checksum::Args),
     /// Removes directories that do not contain any files.
     CleanEmptyDirectory(clean_empty_directory::Args),
-    /// List files with similar file names.
+    /// Scans files and renames those with non-standard naming patterns (e.g., URL-encoded characters).
     CleanFilename(clean_filename::Args),
     /// Finds duplicate files and conditionally deletes them.
     Duplicate(duplicate::Args),

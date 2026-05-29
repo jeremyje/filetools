@@ -31,10 +31,10 @@ pub(crate) struct Args {
     /// Example: --clear-tokens=(1) will match "image.jpg" and "image (1).jpg" since the space and "(1)" are ignored.
     #[arg(long, default_value = "")]
     pub(crate) clear_tokens: Vec<String>,
-    /// Minimum file size in bytes to include in the scan. Files smaller than this are ignored.
+    /// Minimum file size in bytes to include in the scan. Files smaller than this are ignored. (Note: size filtering is not yet implemented; all files are currently included regardless of size.)
     #[arg(long, default_value_t = 0)]
     pub(crate) min_size: i64,
-    /// Include file sizes in the output when reporting similar file groups.
+    /// When enabled, prints the file size alongside each path when reporting similar file groups. (Note: not yet implemented; sizes are not currently shown in output.)
     #[arg(long, default_value_t = false)]
     pub(crate) include_size: std::primitive::bool,
 }
