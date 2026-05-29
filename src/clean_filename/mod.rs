@@ -21,10 +21,10 @@ pub(crate) struct Args {
     /// List of directories that will be scanned for files to be renamed.
     #[arg(long, default_value = ".")]
     pub(crate) path: Vec<std::path::PathBuf>,
-    /// When enabled (default), reports files that would be renamed without making changes. Set to false to rename files with unusual naming patterns such as URL-encoded strings.
+    /// When enabled (default), reports files that would be renamed without making changes. Set to false to rename files with unusual naming patterns such as URL-encoded strings. (Note: renaming is not yet implemented; all runs are effectively dry runs.)
     #[arg(long, default_value_t = true)]
     pub(crate) dry_run: std::primitive::bool,
-    /// Overwrite existing files if present.
+    /// Allow overwriting an existing file at the destination path when renaming. (Note: not yet implemented; has no effect.)
     #[arg(long, default_value_t = false)]
     pub(crate) overwrite: bool,
 }
