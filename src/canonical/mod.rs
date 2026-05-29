@@ -27,8 +27,50 @@ use std::{
 use crate::common::fs::FileMetadata;
 
 static EXTENSION_CORRECTIONS: phf::Map<&'static str, &'static str> = phf_map! {
-  "jpeg" => "jpg",
-  "mp4" => "m4v",
+  // Images – canonical: jpg, tif, heic, bmp
+  "jpeg"  => "jpg",
+  "jpe"   => "jpg",
+  "jfif"  => "jpg",
+  "tiff"  => "tif",
+  "heif"  => "heic",
+  "dib"   => "bmp",   // Device-Independent Bitmap alias
+  // Video – canonical: m4v, mpg, flv, 3gp, wmv
+  "mp4"   => "m4v",
+  "mpeg"  => "mpg",
+  "mpeg4" => "m4v",
+  "m2v"   => "mpg",   // MPEG-2 video
+  "3gpp"  => "3gp",   // 3GPP mobile video
+  "3gp2"  => "3gp",
+  "3g2"   => "3gp",
+  "f4v"   => "flv",   // Flash Video variant
+  "asf"   => "wmv",   // Advanced Systems Format (Windows Media container)
+  // Audio – canonical: mp3, aif, wav, m4a, ogg
+  "aiff"  => "aif",
+  "aifc"  => "aif",   // AIFF-C compressed variant
+  "wave"  => "wav",
+  "m4b"   => "m4a",   // iTunes audiobook → generic MPEG-4 audio
+  "m4r"   => "m4a",   // iPhone ringtone → generic MPEG-4 audio
+  "oga"   => "ogg",   // Ogg audio-only container alias
+  "spx"   => "ogg",   // Speex audio (also in Ogg container)
+  "opus"  => "ogg",   // Opus audio (Ogg container)
+  "mp2"   => "mp3",   // MPEG-1 Audio Layer II → Layer III
+  // Markup / text – canonical: html, txt, md, yaml
+  "htm"      => "html",
+  "xhtml"    => "html",
+  "shtml"    => "html",
+  "text"     => "txt",
+  "markdown" => "md",
+  "mkd"      => "md",
+  "mdown"    => "md",
+  "mdwn"     => "md",
+  "yml"      => "yaml",  // YAML spec recommends .yaml
+  // Archives – preserve the tar layer in the extension
+  "tgz"  => "tar.gz",
+  "taz"  => "tar.gz",
+  "tbz2" => "tar.bz2",
+  "tbz"  => "tar.bz2",
+  "txz"  => "tar.xz",
+  "tzst" => "tar.zst",
 };
 
 #[derive(clap::Args, Clone)]
@@ -110,13 +152,23 @@ fn canonicalize_path(p: &Path) -> Option<PathBuf> {
 }
 
 fn canonicalize_filename(file_stem: &str, extension: &str) -> Option<PathBuf> {
-    if let Some(correction) = EXTENSION_CORRECTIONS.get(extension.to_lowercase().as_str()) {
-        let mut new_file_name = file_stem.to_string();
-        new_file_name.push('.');
-        new_file_name.push_str(correction);
-        return Some(PathBuf::from(new_file_name));
-    }
-    None
+    let ext_lower = extension.to_lowercase();
+    let new_ext = if let Some(&correction) = EXTENSION_CORRECTIONS.get(ext_lower.as_str()) {
+        correction.to_string()
+    } else if ext_lower != extension {
+        ext_lower
+    } else {
+        return None;
+    };
+    // Avoid double-tar: "archive.tar.tgz" → "archive.tar.gz", not "archive.tar.tar.gz"
+    let stem = if new_ext.starts_with("tar.")
+        && file_stem.to_lowercase().ends_with(".tar")
+    {
+        &file_stem[..file_stem.len() - 4]
+    } else {
+        file_stem
+    };
+    Some(PathBuf::from(format!("{stem}.{new_ext}")))
 }
 
 #[cfg(test)]
@@ -127,18 +179,18 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn canonicalize_filenames() {
+    fn canonicalize_filenames_dry_run_then_rename() {
         let tmp_dir = tempdir().expect("create directory");
 
         let a_txt = Path::join(tmp_dir.path(), "a.txt");
         fs::write(&a_txt, b"4").expect("write file");
-
         let b_jpeg = Path::join(tmp_dir.path(), "b.jpeg");
         let b_jpg = Path::join(tmp_dir.path(), "b.jpg");
         fs::write(&b_jpeg, b"4").expect("write file");
-
         let c_jpg = Path::join(tmp_dir.path(), "c.jpg");
         fs::write(&c_jpg, b"4").expect("write file");
+
+        // dry_run=true: nothing should change
         run(
             &Args {
                 path: vec![PathBuf::from(tmp_dir.path())],
@@ -147,11 +199,12 @@ mod tests {
             Verbosity::new(0, 0),
         )
         .expect("canonical");
-        assert!(&a_txt.exists());
-        assert!(&b_jpeg.exists());
-        assert_eq!(false, (&b_jpg).exists());
-        assert!(&c_jpg.exists());
+        assert!(a_txt.exists());
+        assert!(b_jpeg.exists());
+        assert!(!b_jpg.exists());
+        assert!(c_jpg.exists());
 
+        // dry_run=false: b.jpeg → b.jpg
         run(
             &Args {
                 path: vec![PathBuf::from(tmp_dir.path())],
@@ -160,27 +213,104 @@ mod tests {
             Verbosity::new(1, 1),
         )
         .expect("canonical");
-        assert!(&a_txt.exists());
-        assert_eq!(false, (&b_jpeg).exists());
-        assert!(&b_jpg.exists());
-        assert!(&c_jpg.exists());
+        assert!(a_txt.exists());
+        assert!(!b_jpeg.exists());
+        assert!(b_jpg.exists());
+        assert!(c_jpg.exists());
     }
 
     #[test]
-    fn canonicalize_filename_no_correction() {
-        assert_eq!(None, canonicalize_filename("abc", "txt"));
+    fn canonicalize_filenames_uppercase() {
+        let tmp_dir = tempdir().expect("create directory");
+        let a_upper = Path::join(tmp_dir.path(), "a.JPG");
+        let a_lower = Path::join(tmp_dir.path(), "a.jpg");
+        fs::write(&a_upper, b"img").expect("write file");
+
+        run(
+            &Args {
+                path: vec![PathBuf::from(tmp_dir.path())],
+                dry_run: false,
+            },
+            Verbosity::new(0, 0),
+        )
+        .expect("canonical");
+        assert!(!a_upper.exists());
+        assert!(a_lower.exists());
     }
 
     #[test]
-    fn canonicalize_filename_correct_extension() {
-        assert_eq!(
-            Some(PathBuf::from("abc.jpg")),
-            canonicalize_filename("abc", "jpeg")
-        );
-    }
+    fn canonicalize_filename_table() {
+        // (stem, extension, expected output)
+        // None means no rename needed.
+        let cases: &[(&str, &str, Option<&str>)] = &[
+            // Already canonical – no change
+            ("abc", "txt",  None),
+            ("abc", "jpg",  None),
+            ("abc", "mp3",  None),
+            // Alias corrections – images
+            ("abc", "jpeg",     Some("abc.jpg")),
+            ("abc", "jpe",      Some("abc.jpg")),
+            ("abc", "jfif",     Some("abc.jpg")),
+            ("abc", "tiff",     Some("abc.tif")),
+            ("abc", "heif",     Some("abc.heic")),
+            ("abc", "dib",      Some("abc.bmp")),
+            // Alias corrections – video
+            ("abc", "mp4",      Some("abc.m4v")),
+            ("abc", "mpeg",     Some("abc.mpg")),
+            ("abc", "mpeg4",    Some("abc.m4v")),
+            ("abc", "m2v",      Some("abc.mpg")),
+            ("abc", "3gpp",     Some("abc.3gp")),
+            ("abc", "3gp2",     Some("abc.3gp")),
+            ("abc", "3g2",      Some("abc.3gp")),
+            ("abc", "f4v",      Some("abc.flv")),
+            ("abc", "asf",      Some("abc.wmv")),
+            // Alias corrections – audio
+            ("abc", "aiff",     Some("abc.aif")),
+            ("abc", "aifc",     Some("abc.aif")),
+            ("abc", "wave",     Some("abc.wav")),
+            ("abc", "m4b",      Some("abc.m4a")),
+            ("abc", "m4r",      Some("abc.m4a")),
+            ("abc", "oga",      Some("abc.ogg")),
+            ("abc", "spx",      Some("abc.ogg")),
+            ("abc", "opus",     Some("abc.ogg")),
+            ("abc", "mp2",      Some("abc.mp3")),
+            // Alias corrections – markup / text
+            ("abc", "htm",      Some("abc.html")),
+            ("abc", "xhtml",    Some("abc.html")),
+            ("abc", "shtml",    Some("abc.html")),
+            ("abc", "text",     Some("abc.txt")),
+            ("abc", "markdown", Some("abc.md")),
+            ("abc", "mkd",      Some("abc.md")),
+            ("abc", "mdown",    Some("abc.md")),
+            ("abc", "mdwn",     Some("abc.md")),
+            ("abc", "yml",      Some("abc.yaml")),
+            // Alias corrections – archives
+            ("abc", "tgz",      Some("abc.tar.gz")),
+            ("abc", "taz",      Some("abc.tar.gz")),
+            ("abc", "tbz2",     Some("abc.tar.bz2")),
+            ("abc", "tbz",      Some("abc.tar.bz2")),
+            ("abc", "txz",      Some("abc.tar.xz")),
+            ("abc", "tzst",     Some("abc.tar.zst")),
+            // Uppercase extension → lowercase (no alias needed)
+            ("abc", "JPG",      Some("abc.jpg")),
+            ("abc", "PNG",      Some("abc.png")),
+            ("abc", "MP4",      Some("abc.m4v")),
+            ("abc", "JPEG",     Some("abc.jpg")),
+            // Double-tar prevention: stem already ends with .tar
+            ("archive.tar", "tgz",  Some("archive.tar.gz")),
+            ("archive.tar", "tbz2", Some("archive.tar.bz2")),
+            ("archive.tar", "txz",  Some("archive.tar.xz")),
+            ("archive.TAR", "tgz",  Some("archive.tar.gz")),
+            // Non-.tar stem is unaffected
+            ("archive",     "tgz",  Some("archive.tar.gz")),
+        ];
 
-    #[test]
-    fn canonicalize_filename_no_correct_extension() {
-        assert_eq!(None, canonicalize_filename("abc", "jpg"));
+        for &(stem, ext, expected) in cases {
+            assert_eq!(
+                expected.map(PathBuf::from),
+                canonicalize_filename(stem, ext),
+                "stem={stem:?} ext={ext:?}"
+            );
+        }
     }
 }
