@@ -45,7 +45,7 @@ humansize = "2.1.3"
 humantime = "2.3.0"
 indicatif = "0.18.0"
 indicatif-log-bridge = "0.2.3"
-log = "0.4.28"
+log = "0.4.31"
 more-asserts = "0.3.1"
 mp4 = "0.14.0"
 phf = { version = "0.13.1", features = ["macros"] }
