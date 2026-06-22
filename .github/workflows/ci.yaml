@@ -46,7 +46,7 @@ jobs:
 
     # Checks out a copy of your repository on the ubuntu-latest machine
     - name: Checkout Code
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       # https://github.com/actions/checkout
 
     - name: Login to GitHub Container Registry
